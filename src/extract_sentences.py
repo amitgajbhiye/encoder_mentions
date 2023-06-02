@@ -59,4 +59,4 @@ if __name__ == "__main__":
 
     print(f"num_sents_for_concepts", flush=True, end="\n")
     for key, value in con_sentences.items():
-        print(f"{key} : {len(value)}", end="\n", flush=True, end="\n")
+        print(f"{key} : {len(value)}", end="\n", flush=True)
