@@ -32,7 +32,9 @@ if __name__ == "__main__":
     with open(hawk_wiki_text_file, "r", encoding="utf-8") as wikifile, open(
         out_file, "w"
     ) as outfile:
+        wiki_line_count = 0
         for line in wikifile:
+            print(f"wiki_line_count : {wiki_line_count}", flush=True)
             sent = line.strip()
 
             if len(sent.split(" ")) > max_sentence_length:
@@ -48,11 +50,15 @@ if __name__ == "__main__":
 
                             outfile.write(f"{con}\t{sent}\n")
                             outfile.flush()
-                            print(f"{current_num_sents}\t{con}\t{sent}", flush=True)
+                            print(
+                                f"{current_num_sents}\t{con}\t{sent}",
+                                flush=True,
+                            )
                         else:
                             continue
                     else:
                         con_sentences[con] = []
+            wiki_line_count += 1
 
     # print("con_sentences", flush=True)
     # print(con_sentences, flush=True, end="\n")
