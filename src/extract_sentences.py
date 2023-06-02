@@ -22,9 +22,9 @@ if __name__ == "__main__":
     max_sentence_length = 32
 
     # concepts to reterive the sentence for
-    cons = [line.rstrip() for line in open(concept_input_file)][0:10]
+    cons = [line.rstrip() for line in open(concept_input_file)][0:3]
 
-    print(f"num_input_concepts : {len(cons)}", flush=True)
+    print(f"num_input_concepts : {len(cons)}, {cons}", flush=True, end="\n")
 
     con_sentences = {}
     num_extract_sents = 5
