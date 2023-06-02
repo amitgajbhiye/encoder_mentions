@@ -24,11 +24,12 @@ if __name__ == "__main__":
     # concepts to reterive the sentence for
     cons = [line.rstrip() for line in open(concept_input_file)][0:10]
 
-    print(f"num_input_concepts : {len(cons)}")
+    print(f"num_input_concepts : {len(cons)}", flush=True)
 
     con_sentences = {}
-    num_extract_sents = 10
-    with open(hawk_wiki_text_file, "r", encoding="utf-8") as f:
+    num_extract_sents = 5
+
+    with open(wiki_text_file, "r", encoding="utf-8") as f:
         for line in f:
             sent = line.strip()
 
@@ -40,12 +41,13 @@ if __name__ == "__main__":
                     if con in con_sentences:
                         if len(con_sentences[con]) < num_extract_sents:
                             con_sentences[con].append(sent)
+                        else:
+                            continue
                     else:
                         con_sentences[con] = []
 
     print("con_sentences", flush=True)
-    print(con_sentences, flush=True)
-    print(flush=True)
+    print(con_sentences, flush=True, end="\n")
 
     for key, value in con_sentences.items():
         print(f"{key} : {value}", end="\n", flush=True)
