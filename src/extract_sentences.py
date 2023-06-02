@@ -29,7 +29,7 @@ if __name__ == "__main__":
     print(f"num_input_concepts : {len(cons)}, {cons}", flush=True, end="\n")
 
     con_sentences = {}
-    num_extract_sents = 10
+    num_extract_sents = 5
 
     with open(hawk_wiki_text_file, "r", encoding="utf-8") as wikifile, open(
         out_file, "w"
