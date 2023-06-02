@@ -49,6 +49,7 @@ if __name__ == "__main__":
                             con_sentences[con].append(sent)
 
                             outfile.write(f"{con}\t{sent}\n")
+                            outfile.flush()
                             print(f"{current_num_sents}, {con}\t{sent}", flush=True)
                         else:
                             continue
