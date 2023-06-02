@@ -26,8 +26,8 @@ if __name__ == "__main__":
     num_extract_sents = 500
 
     print(f"num_input_concepts : {len(cons)}", flush=True)
-    print(f"num_extract_sents : {len(num_extract_sents)}", flush=True)
-    print(f"max_sentence_length : {len(max_sentence_length)}", flush=True, end="\n")
+    print(f"num_extract_sents : {num_extract_sents}", flush=True)
+    print(f"max_sentence_length : {max_sentence_length}", flush=True, end="\n")
 
     with open(hawk_wiki_text_file, "r", encoding="utf-8") as wikifile, open(
         out_file, "w"
