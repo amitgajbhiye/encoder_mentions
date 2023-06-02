@@ -1,0 +1,40 @@
+{
+    "experiment_name": "je_mcrae_cslb5neg_pretrain_deberta_v3_large_mask_id_ctx5_con_prop",
+    "log_dirctory": "je_pretrain",
+    "training_params": {
+        "dataset_name": "mcrae_cslb5neg",
+        "pretrain": true,
+        "train_file_path": "data/train_data/je_con_prop/mcrae_cslb5neg/train_mcrae_cslb5neg.tsv",
+        "val_file_path": "data/train_data/je_con_prop/mcrae_cslb5neg/val_mcrae_cslb5neg.tsv",
+        "test_file_path": null,
+        "finetune": false,
+        "load_pretrained": false,
+        "pretrained_model_path": null,
+        "cv_type": null,
+        "data_dir": null,
+        "batch_size": 32,
+        "lr": 1e-5,
+        "max_epochs": 100,
+        "warmup_ratio": 0,
+        "patience_early_stopping": 5,
+        "save_dir": "trained_models/je_mcrae_cslb_pretrained",
+        "model_name": "je_mcrae_cslb5neg_pretrain_deberta_v3_large_mask_id_ctx5_con_prop.pt",
+        "lr_policy": null,
+        "lr_decay_iters": null,
+        "weight_decay": 0.01,
+        "hp_tuning": false
+    },
+    "dataset_params": {
+        "hf_tokenizer_name": "deberta-v3-large",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/deberta_v3_large/tokenizer",
+        "max_len": 30,
+        "context_id": 5
+    },
+    "model_params": {
+        "hf_checkpoint_name": "deberta-v3-large",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/deberta_v3_large/model",
+        "num_labels": 0,
+        "context_id": 5,
+        "remove_classifier_layer": false
+    }
+}
