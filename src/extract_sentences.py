@@ -16,6 +16,8 @@ if __name__ == "__main__":
 
     hawk_wiki_text_file = "/scratch/c.scmag3/en_wikipedia/en_wikipedia.txt"
 
+    out_file = "data/cnetpchatgpt/dummy_con_sents.tsv"
+
     print(f"input_concept_file : {concept_input_file}", flush=True)
     print(f"wiki_text_file : {wiki_text_file}", flush=True)
 
@@ -27,10 +29,12 @@ if __name__ == "__main__":
     print(f"num_input_concepts : {len(cons)}, {cons}", flush=True, end="\n")
 
     con_sentences = {}
-    num_extract_sents = 5
+    num_extract_sents = 10
 
-    with open(wiki_text_file, "r", encoding="utf-8") as f:
-        for line in f:
+    with open(hawk_wiki_text_file, "r", encoding="utf-8") as wikifile, open(
+        out_file, "w"
+    ) as outfile:
+        for line in wikifile:
             sent = line.strip()
 
             if len(sent.split(" ")) > max_sentence_length:
@@ -39,8 +43,13 @@ if __name__ == "__main__":
             for con in cons:
                 if find_whole_word(con)(sent) is not None:
                     if con in con_sentences:
-                        if len(con_sentences[con]) < num_extract_sents:
+                        current_num_sents = len(con_sentences[con])
+
+                        if current_num_sents < num_extract_sents:
                             con_sentences[con].append(sent)
+
+                            outfile.write(f"{con}\t{sent}\n")
+                            print(f"{current_num_sents}, {con}\t{sent}", flush=True)
                         else:
                             continue
                     else:
