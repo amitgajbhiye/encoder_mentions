@@ -21,7 +21,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
 from transformers import AutoConfig, AutoModel, AutoTokenizer
 
-from transformers import BertModel, BertForSequenceClassification, BertTokenizer
+from transformers import BertModel, BertForMaskedLM, BertTokenizer
 from transformers import (
     RobertaModel,
     RobertaForSequenceClassification,
@@ -34,13 +34,17 @@ from transformers import (
     DebertaV2Tokenizer,
 )
 
-from transformers import (
-    AdamW,
-    get_linear_schedule_with_warmup,
-)
-
 from je_utils import compute_scores, read_config, set_seed
 from pytorch_metric_learning import losses, miners
+from pytorch_metric_learning.samplers import MPerClassSampler
+from early_stop import EarlyStopping
+
+from transformers import (
+    AdamW,
+    get_constant_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
+    get_cosine_schedule_with_warmup,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -48,28 +52,28 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 
 CLASSES = {
-    "bert-base-uncased": (BertModel, BertForSequenceClassification, BertTokenizer, 103),
+    "bert-base-uncased": (BertModel, BertForMaskedLM, BertTokenizer, 103),
     "bert-large-uncased": (
         BertModel,
-        BertForSequenceClassification,
+        BertForMaskedLM,
         BertTokenizer,
         103,
     ),
     "roberta-base": (
         RobertaModel,
-        RobertaForSequenceClassification,
+        "",
         RobertaTokenizer,
         50264,
     ),
     "roberta-large": (
         RobertaModel,
-        RobertaForSequenceClassification,
+        "",
         RobertaTokenizer,
         50264,
     ),
     "deberta-v3-large": (
         DebertaV2Model,
-        DebertaV2ForSequenceClassification,
+        "",
         DebertaV2Tokenizer,
         128000,
     ),
@@ -99,6 +103,7 @@ log = logging.getLogger(__name__)
 
 class DatasetConceptSentence(Dataset):
     def __init__(self, concept_sent_file, dataset_params):
+
         if isinstance(concept_sent_file, pd.DataFrame):
             self.data_df = concept_sent_file
             log.info(
@@ -109,7 +114,6 @@ class DatasetConceptSentence(Dataset):
                 {
                     "concept": str,
                     "sent": str,
-                    "labels": int,
                 },
             )
 
@@ -134,6 +138,12 @@ class DatasetConceptSentence(Dataset):
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
         self.data_df.reset_index(inplace=True, drop=True)
+        self.data_df["label"] = 0
+        self.data_df.set_index("concept", inplace=True)
+
+        for l, idx in enumerate(self.data_df, start=1):
+                self.data_df.loc[idx, "label"] = l
+        self.data_df.reset_index(inplace=True)
 
         log.info("Input DF")
         log.info(self.data_df.head(n=20))
@@ -162,8 +172,24 @@ class DatasetConceptSentence(Dataset):
     def __getitem__(self, idx):
         concept = self.data_df["concept"][idx]
         sent = self.data_df["sent"][idx]
+        label = self.data_df["label"][idx]
 
-        return {"concept": concept, "sent": sent}
+
+        encoded_dict = self.tokenizer.encode_plus(text=sent,
+            text_pair=None,
+            max_length=self.max_len,
+            add_special_tokens=True,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+            return_token_type_ids=True,
+        )
+
+        encoded_dict["concept"] = concept
+        encoded_dict["sent"] = sent
+        encoded_dict["label"] = label
+
+        return encoded_dict
 
 
 class ModelMentionEncoder(nn.Module):
@@ -173,30 +199,34 @@ class ModelMentionEncoder(nn.Module):
         self.hf_checkpoint_name = model_params["hf_checkpoint_name"]
         self.hf_model_path = model_params["hf_model_path"]
 
-        model_class, _, _, self.mask_token_id = CLASSES[self.hf_checkpoint_name]
+        _, model_class, _, self.mask_token_id = CLASSES[self.hf_checkpoint_name]
 
         log.info(f"model_class : {model_class}")
 
-        self.encoder = model_class.from_pretrained(self.hf_model_path)
+        self.encoder = model_class.from_pretrained(
+            self.hf_model_path, output_hidden_states=True
+        )
 
-        classifier_dropout = self.encoder.config.hidden_dropout_prob
+        self.miner = miners.MultiSimilarityMiner()
+        self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
 
-        self.dropout = nn.Dropout(classifier_dropout)
-        self.classifier = nn.Linear(self.encoder.config.hidden_size, 1)
+        self.use_hard_pair = model_params["use_hard_pair"]
 
-        self.loss_fn = losses.NTXentLoss(temperature=config.tau)
-
-    def get_bienc_con_embed(con_list):
-        pass
-
-    def forward(self, concept, sentence, labels=None):
-        output = self.encoder(
+    def forward(
+        self,
+        pretrained_con_embeds,
+        input_ids,
+        token_type_ids,
+        attention_mask,
+        labels=None,
+    ):
+        outputs = self.encoder(
             input_ids=input_ids,
             token_type_ids=token_type_ids,
             attention_mask=attention_mask,
         )
 
-        hidden_states = output.last_hidden_state
+        hidden_states = outputs.hidden_states[-1]
 
         print(f"hidden_states : {hidden_states.shape}", flush=True)
 
@@ -215,29 +245,30 @@ class ModelMentionEncoder(nn.Module):
             return mask_vectors
 
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
-
         print(f"mask_vectors :{mask_vectors.shape}", flush=True)
 
-        mask_vectors = self.dropout(mask_vectors)
-        mask_logits = self.classifier(mask_vectors).view(-1)
+        emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
 
-        loss = None
-        if labels is not None:
-            labels = labels.view(-1).float()
-            loss = loss_fct(mask_logits, labels)
+        if labels is None:
+            labels = torch.arange(mask_vectors.size(0))
+        labels = torch.cat([labels, labels], dim=0)
 
-        print("Step loss :", loss, flush=True)
+        if self.use_hard_pair:
+            hard_pairs = self.miner(emb_all, labels)
+            loss = self.loss_fn(emb_all, labels, hard_pairs)
+        else:
+            loss = self.loss_fn(emb_all, labels)
 
-        return (loss, mask_logits, mask_vectors)
+        return loss, mask_vectors
 
 
-def prepare_data_and_models(
-    config,
-    train_file,
-    valid_file=None,
-    test_file=None,
-):
+def prepare_data_and_models(config):
+
+    ############
     training_params = config["training_params"]
+    dataset_params = config["dataset_params"]
+    model_params = config["model_params"]
+    ############
 
     load_pretrained = training_params["load_pretrained"]
     pretrained_model_path = training_params["pretrained_model_path"]
@@ -246,16 +277,22 @@ def prepare_data_and_models(
     max_epochs = training_params["max_epochs"]
     batch_size = training_params["batch_size"]
 
-    dataset_params = config["dataset_params"]
-    model_params = config["model_params"]
-
+    train_file = dataset_params["train_file_path"]
+    valid_file = dataset_params["val_file_path"]
+    test_file = dataset_params["test_file_path"]
+    
     num_workers = 4
 
     if train_file is not None:
-        train_data = DatasetConceptSentence(train_file, dataset_params)
-        train_sampler = RandomSampler(train_data)
+        train_dataset = DatasetConceptSentence(train_file, dataset_params)
+        # train_sampler = RandomSampler(train_dataset)
+
+        train_sampler = MPerClassSampler(
+                train_dataset.data_df["label"], m=1, batch_size=batch_size, length_before_new_iter=len(train_dataset.data_df["label"])
+            )
+        
         train_dataloader = DataLoader(
-            train_data,
+            train_dataset,
             batch_size=batch_size,
             sampler=train_sampler,
             collate_fn=None,
@@ -263,40 +300,43 @@ def prepare_data_and_models(
             pin_memory=True,
         )
 
-        log.info(f"Train Data DF shape : {train_data.data_df.shape}")
+        log.info(f"Train Data DF shape : {train_dataset.data_df.shape}")
     else:
         log.info(f"Train File is Empty.")
         train_dataloader = None
 
     if valid_file is not None:
-        val_data = DatasetConceptSentence(valid_file, dataset_params)
-        val_sampler = RandomSampler(val_data)
+        val_dataset = DatasetConceptSentence(valid_file, dataset_params)
+        val_sampler = MPerClassSampler(
+                val_dataset.data_df["label"], m=1, batch_size=batch_size, length_before_new_iter=len(val_dataset.data_df["label"])
+            )
         val_dataloader = DataLoader(
-            val_data,
+            val_dataset,
             batch_size=batch_size,
             sampler=val_sampler,
             collate_fn=None,
             num_workers=num_workers,
             pin_memory=True,
-            drop_last=True,
+            drop_last=False,
         )
-        log.info(f"Valid Data DF shape : {val_data.data_df.shape}")
+        log.info(f"Valid Data DF shape : {val_dataset.data_df.shape}")
     else:
         log.info(f"Validation File is Empty.")
         val_dataloader = None
 
     if test_file is not None:
-        test_data = DatasetConceptSentence(test_file, dataset_params)
-        test_sampler = SequentialSampler(test_data)
+        test_dataset = DatasetConceptSentence(test_file, dataset_params)
+        test_sampler = SequentialSampler(test_dataset)
+
         test_dataloader = DataLoader(
-            test_data,
+            test_dataset,
             batch_size=batch_size,
             sampler=test_sampler,
             collate_fn=None,
             num_workers=num_workers,
             pin_memory=True,
         )
-        log.info(f"Test Data DF shape : {test_data.data_df.shape}")
+        log.info(f"Test Data DF shape : {test_dataset.data_df.shape}")
     else:
         log.info("Test File is Empty.")
         test_dataloader = None
@@ -304,15 +344,11 @@ def prepare_data_and_models(
     log.info(f"Load Pretrained : {load_pretrained}")
     log.info(f"Pretrained Model Path : {pretrained_model_path}")
 
-    remove_classifier_layer = model_params["remove_classifier_layer"]
-
-    log.info(f"remove_classifier_layer : {remove_classifier_layer}")
-
     # Creating Model
     model = ModelMentionEncoder(model_params=model_params)
 
     if load_pretrained:
-        log.info(f"load_pretrained is {load_pretrained}")
+        log.info(f"load_pretrained is : {load_pretrained}")
         log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
         model.load_state_dict(torch.load(pretrained_model_path))
 
@@ -320,40 +356,41 @@ def prepare_data_and_models(
 
     model.to(device)
 
-    log.info("Model")
-    log.info(model)
-    log.info(f"Model Class : {model.__class__.__name__}")
+    # log.info("Model")
+    # log.info(model)
+    log.info(f"model_class : {model.__class__.__name__}")
 
     if train_file is not None:
+
         optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-        total_steps = len(train_dataloader) * max_epochs
-        warmup_ratio = training_params["warmup_ratio"]
-        num_warmup_steps = math.ceil(total_steps * warmup_ratio)
-
-        log.info(f"num_warmup_steps : {num_warmup_steps}")
-        log.info(f"total_steps : {total_steps}")
-
-        # num_warmup_steps = 0
-
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=total_steps
-        )
-
-        assert model.context_id == train_data.context_id, (
-            f"Model context_id should be equal to dataset context_id;"
-            f"model.context_id is {model.context_id} and dataset context_id is {train_data.context_id}"
-        )
-
-        return (
-            model,
-            scheduler,
-            optimizer,
-            train_dataloader,
-            val_dataloader,
-            test_dataloader,
-        )
+        
+        if training_params["lr_schedule"] == "linear":
+            scheduler = get_linear_schedule_with_warmup(
+                optimizer, len(train_dataloader) * 2, int(len(train_dataloader) * 1000)
+            )
+        else:
+            scheduler = get_cosine_schedule_with_warmup(
+                optimizer,
+                len(train_dataloader) * 2,
+                int(len(train_dataloader) * 1000),
+                num_cycles=1.5,
+            )
+        
+        
+        return {
+            "model": model,
+            "scheduler": scheduler,
+            "optimizer": scheduler,
+            "train_dataset": train_dataset,
+            "train_dataloader": train_dataloader,
+            "val_dataset":val_dataset,
+            "val_dataloader": val_dataloader,
+            "test_dataset": test_dataset,
+            "test_dataloader": test_dataloader
+        }
     else:
-        return (model, test_dataloader)
+        assert load_pretrained == True and pretrained_model_path is not None, "Model Testing, specify load_pretrained and pretrained_model_path in config file"
+        return {"model":model, "test_dataloader": test_dataloader}
 
 
 def evaluate(model, dataloader):
@@ -401,26 +438,43 @@ def evaluate(model, dataloader):
     return avg_val_loss, val_preds, val_labels
 
 
+def get_pretrained_con_embeds(cons):
+    pass
+
+
 def train(
-    training_params,
-    model,
-    scheduler,
-    optimizer,
-    train_dataloader,
-    val_dataloader=None,
-    test_dataloader=None,
+    config,
+    param_dict
     fold=None,
 ):
+    training_params = config["training_params"]
+
     max_epochs = training_params["max_epochs"]
     model_name = training_params["model_name"]
     save_dir = training_params["save_dir"]
 
     patience_early_stopping = training_params["patience_early_stopping"]
 
+    model =  param_dict["model"]
+    scheduler =  param_dict["scheduler"]
+    optimizer =  param_dict["scheduler"]
+    
+    train_dataset =  param_dict["train_dataset"]
+    train_dataloader =  param_dict[" train_dataloader"]
+
+    val_dataset=  param_dict["val_dataset"]
+    val_dataloader =  param_dict["val_dataloader"]
+    
+    test_dataset =  param_dict["test_dataset"]
+    test_dataloader=  param_dict["test_dataloader"]
+
     best_valid_f1 = 0.0
     patience_counter = 0
+    
     start_epoch = 1
+
     epoch_train_losses, epoch_valid_losses = [], []
+
     (
         best_model_to_test,
         best_model_path,
@@ -429,44 +483,35 @@ def train(
         None,
     )
 
+
     for epoch in range(start_epoch, max_epochs + 1):
         log.info("Epoch {:} of {:}".format(epoch, max_epochs))
 
         step_train_losses = []
 
         model.train()
+
         for step, batch in enumerate(train_dataloader):
-            concept = batch[0]
-            sentences = batch[1]  #########################################
+
+            pretrained_con_embeds = get_pretrained_con_embeds(config, batch)
+            ids_dict = train_dataset.get_sent_ids(config, batch)
 
             model.zero_grad()
 
-            input_ids = batch["input_ids"].squeeze().to(device)
-            token_type_ids = batch["token_type_ids"].squeeze().to(device)
-            attention_mask = batch["attention_mask"].squeeze().to(device)
+            sent_inp_ids = batch["input_ids"].squeeze().to(device)
+            sent_token_type_ids = batch["token_type_ids"].squeeze().to(device)
+            sent_atten_mask = batch["attention_mask"].squeeze().to(device)
             labels = batch["labels"].to(device)
 
-            # print(flush=True)
-            # print(f"In Step {step}", flush=True)
-            # print(f"input_ids.shape : {input_ids.shape}", flush=True)
-            # print(f"attention_mask.shape : {attention_mask.shape}", flush=True)
-            # print(f"labels.shape : {labels.shape}", flush=True)
-            # print(f"attention_mask : {attention_mask[0]}", flush=True)
-
             outputs = model(
-                input_ids=input_ids,
-                token_type_ids=token_type_ids,
-                attention_mask=attention_mask,
-                labels=labels,
+                pretrained_con_embeds=pretrained_con_embeds,
+                input_ids=sent_inp_ids,
+                token_type_ids=sent_token_type_ids,
+                attention_mask=sent_atten_mask,
+                labels=None,
             )
 
-            if isinstance(model, ModelConceptPropertyJoint) or isinstance(
-                model, ModelAnyNumberLabel
-            ):
-                loss, logits, mask_vectors = outputs
-
-            elif isinstance(model, ModelSeqClassificationConPropJoint):
-                loss, logits = outputs
+            loss, mask_vectors = outputs +++++++++++++++++++++++++
 
             step_train_losses.append(loss.item())
 
@@ -754,7 +799,7 @@ def do_cv(config):
 if __name__ == "__main__":
     set_seed(1)
 
-    parser = ArgumentParser(description="Joint Encoder Concept Property Model")
+    parser = ArgumentParser(description="Mention Encoder")
 
     parser.add_argument(
         "-c",
@@ -783,118 +828,23 @@ if __name__ == "__main__":
     hp_tuning = training_params["hp_tuning"]
 
     if pretrain:
-        train_file = training_params["train_file_path"]
-        valid_file = training_params["val_file_path"]
-        test_file = training_params["test_file_path"]
+        # train_file = training_params["train_file_path"]
+        # valid_file = training_params["val_file_path"]
+        # test_file = training_params["test_file_path"]
 
-        log.info(f"Train File  : {train_file}")
-        log.info(f"Valid File  : {valid_file}")
-        log.info(f"Test File : {test_file}")
+        # log.info(f"Train File  : {train_file}")
+        # log.info(f"Valid File  : {valid_file}")
+        # log.info(f"Test File : {test_file}")
 
         if not hp_tuning:
-            (
-                model,
-                scheduler,
-                optimizer,
-                train_dataloader,
-                val_dataloader,
-                test_dataloader,
-            ) = prepare_data_and_models(
-                config=config,
-                train_file=train_file,
-                valid_file=valid_file,
-                test_file=test_file,
-            )
-
-            # assert (
-            #     test_dataloader is None
-            # ), "Test dataloader should be None for pretraining."
-
-            train(
-                training_params=training_params,
-                model=model,
-                scheduler=scheduler,
-                optimizer=optimizer,
-                train_dataloader=train_dataloader,
-                val_dataloader=val_dataloader,
-                test_dataloader=test_dataloader,
+            param_dict = prepare_data_and_models(config=config)
+            
+            train(config=config,
+                param_dict = param_dict
                 fold=None,
             )
         else:
-            log.info("Pretraining Grid Search - Hyperparameter Tuning")
-
-            max_epochs = [8, 10]
-            batch_size = [32]
-            warmup_ratio = [0.04, 0.06, 0.1, 0.15]
-            weight_decay = [0.01, 0.1]
-
-            log.info(f"max_epochs : {max_epochs}")
-            log.info(f"batch_size : {batch_size}")
-            log.info(f"warmup_ratio : {warmup_ratio}")
-            log.info(f"weight_decay : {weight_decay}")
-
-            model_name = config["model_params"]["hf_checkpoint_name"]
-
-            for me in max_epochs:
-                for bs in batch_size:
-                    for wr in warmup_ratio:
-                        for wd in weight_decay:
-                            discription_str = f"me{me}_bs{bs}_wr{wr}_wd{wd}"
-
-                            config["training_params"]["max_epochs"] = me
-                            config["training_params"]["batch_size"] = bs
-                            config["training_params"]["warmup_ratio"] = wr
-                            config["training_params"]["weight_decay"] = wd
-                            config["training_params"]["model_name"] = (
-                                "cnetp_pretrain"
-                                + model_name.replace("-", "_")
-                                + "_"
-                                + discription_str
-                                + ".pt"
-                            )
-
-                            log.info("\n")
-                            log.info("*" * 50)
-
-                            log.info(f"discription_str : {discription_str}")
-
-                            log.info(
-                                f"New Run : max_epochs: {me}, batch_size: {bs}, warmup_ratio : {wr}, weight_decay : {wd}"
-                            )
-                            log.info(
-                                f"Model Name: {config['training_params']['model_name']}"
-                            )
-                            log.info(f"new_config_file")
-                            log.info(config)
-
-                            (
-                                model,
-                                scheduler,
-                                optimizer,
-                                train_dataloader,
-                                val_dataloader,
-                                test_dataloader,
-                            ) = prepare_data_and_models(
-                                config=config,
-                                train_file=train_file,
-                                valid_file=valid_file,
-                                test_file=test_file,
-                            )
-
-                            # assert (
-                            #     test_dataloader is None
-                            # ), "Test dataloader should be None for pretraining."
-
-                            train(
-                                training_params=training_params,
-                                model=model,
-                                scheduler=scheduler,
-                                optimizer=optimizer,
-                                train_dataloader=train_dataloader,
-                                val_dataloader=val_dataloader,
-                                test_dataloader=test_dataloader,
-                                fold=None,
-                            )
+            pass
 
     elif finetune:
         if not hp_tuning:

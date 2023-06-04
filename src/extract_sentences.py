@@ -1,4 +1,5 @@
 import re
+import sys
 
 
 def find_whole_word(w):
@@ -6,24 +7,33 @@ def find_whole_word(w):
 
 
 if __name__ == "__main__":
-    concept_input_file = "data/cnetpchatgpt/con_vocab_cnetchatgpt.txt"
+    concept_range = list(sys.argv[1])
 
     ############################
     # wiki_text_file = "data/cnetpchatgpt/dummy_10000_wikipedia.txt"
     hawk_wiki_text_file = "/scratch/c.scmag3/en_wikipedia/en_wikipedia.txt"
     ############################
 
-    out_file = "data/cnetpchatgpt/con_wiki_sents.tsv"
+    concept_input_file = "data/cnetpchatgpt/con_vocab_cnetchatgpt.txt"
 
     print(f"input_concept_file : {concept_input_file}", flush=True)
     print(f"wiki_text_file : {hawk_wiki_text_file}", flush=True, end="\n")
 
     # concepts to reterive the sentence for
-    cons = [line.rstrip() for line in open(concept_input_file)]
+    start = concept_range[0]
+    end = concept_range[1]
+
+    print(f"concept_range : {concept_range}", flush=True)
+    print(f"start: {start}", flush=True)
+    print(f"end: {end}", flush=True)
+
+    cons = [line.rstrip() for line in open(concept_input_file)][start:end]
 
     con_sentences = {}
     max_sentence_length = 32
     num_extract_sents = 500
+
+    out_file = f"data/cnetpchatgpt/con_{start}_{end}_wiki_sents.tsv"
 
     print(f"num_input_concepts : {len(cons)}", flush=True)
     print(f"num_extract_sents : {num_extract_sents}", flush=True)
