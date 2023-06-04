@@ -7,7 +7,8 @@ def find_whole_word(w):
 
 
 if __name__ == "__main__":
-    concept_range = list(sys.argv[1])
+    start = list(sys.argv[1])
+    end = list(sys.argv[2])
 
     ############################
     # wiki_text_file = "data/cnetpchatgpt/dummy_10000_wikipedia.txt"
@@ -20,10 +21,6 @@ if __name__ == "__main__":
     print(f"wiki_text_file : {hawk_wiki_text_file}", flush=True, end="\n")
 
     # concepts to reterive the sentence for
-    start = concept_range[0]
-    end = concept_range[1]
-
-    print(f"concept_range : {concept_range}", flush=True)
     print(f"start: {start}", flush=True)
     print(f"end: {end}", flush=True)
 

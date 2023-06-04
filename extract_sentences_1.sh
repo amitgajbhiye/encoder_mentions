@@ -15,6 +15,6 @@
 
 conda activate venv
 
-python3 src/extract_sentences.py [0:1000]
+python3 src/extract_sentences.py 0 1000
 
 echo 'Job Finished !!!'
