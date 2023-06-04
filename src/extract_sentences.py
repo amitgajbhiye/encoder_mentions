@@ -7,8 +7,8 @@ def find_whole_word(w):
 
 
 if __name__ == "__main__":
-    start = list(sys.argv[1])
-    end = list(sys.argv[2])
+    start = int(sys.argv[1])
+    end = int(sys.argv[2])
 
     ############################
     # wiki_text_file = "data/cnetpchatgpt/dummy_10000_wikipedia.txt"
