@@ -246,15 +246,15 @@ class ModelMentionEncoder(nn.Module):
         labels = torch.cat([labels, labels], dim=0)
         print(f"labels :{labels.shape}", flush=True)
 
+        print(f"hidden_states : {hidden_states.shape}", flush=True)
+        print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
+        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
+
         if self.use_hard_pair:
             hard_pairs = self.miner(emb_all, labels)
             loss = self.loss_fn(emb_all, labels, hard_pairs)
         else:
             loss = self.loss_fn(emb_all, labels)
-
-        print(f"hidden_states : {hidden_states.shape}", flush=True)
-        print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
-        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
 
         return loss, mask_vectors
 
