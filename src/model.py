@@ -324,22 +324,22 @@ def prepare_data_and_models(config):
         log.info(f"Validation File is Empty.")
         val_dataloader = None
 
-    if test_file is not None:
-        test_dataset = DatasetConceptSentence(test_file, dataset_params)
-        test_sampler = SequentialSampler(test_dataset)
+    # if test_file is not None:
+    #     test_dataset = DatasetConceptSentence(test_file, dataset_params)
+    #     test_sampler = SequentialSampler(test_dataset)
 
-        test_dataloader = DataLoader(
-            test_dataset,
-            batch_size=batch_size,
-            sampler=test_sampler,
-            collate_fn=None,
-            num_workers=num_workers,
-            pin_memory=True,
-        )
-        log.info(f"Test Data DF shape : {test_dataset.data_df.shape}")
-    else:
-        log.info("Test File is Empty.")
-        test_dataloader = None
+    #     test_dataloader = DataLoader(
+    #         test_dataset,
+    #         batch_size=batch_size,
+    #         sampler=test_sampler,
+    #         collate_fn=None,
+    #         num_workers=num_workers,
+    #         pin_memory=True,
+    #     )
+    #     log.info(f"Test Data DF shape : {test_dataset.data_df.shape}")
+    # else:
+    #     log.info("Test File is Empty.")
+    #     test_dataloader = None
 
     log.info(f"Load Pretrained : {load_pretrained}")
     log.info(f"Pretrained Model Path : {pretrained_model_path}")
@@ -357,7 +357,7 @@ def prepare_data_and_models(config):
     if torch.cuda.is_available():
         n_gpu = torch.cuda.device_count()
         if n_gpu > 1:
-            logging.info("using multiple GPUs")
+            logging.info(f"using multiple GPUs: {n_gpu}")
             model = torch.nn.DataParallel(model)
         model.to(device=device)
 
@@ -388,14 +388,14 @@ def prepare_data_and_models(config):
             "train_dataloader": train_dataloader,
             "val_dataset": val_dataset,
             "val_dataloader": val_dataloader,
-            "test_dataset": test_dataset,
-            "test_dataloader": test_dataloader,
+            # "test_dataset": test_dataset,
+            # "test_dataloader": test_dataloader,
         }
-    else:
-        assert (
-            load_pretrained == True and pretrained_model_path is not None
-        ), "Model Testing, specify load_pretrained and pretrained_model_path in config file"
-        return {"model": model, "test_dataloader": test_dataloader}
+    # else:
+    #     assert (
+    #         load_pretrained == True and pretrained_model_path is not None
+    #     ), "Model Testing, specify load_pretrained and pretrained_model_path in config file"
+    #     return {"model": model, "test_dataloader": test_dataloader}
 
 
 def train(config, param_dict):
