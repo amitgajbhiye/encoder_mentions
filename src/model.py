@@ -533,8 +533,4 @@ if __name__ == "__main__":
 
     param_dict = prepare_data_and_models(config=config)
 
-    train(
-        config=config,
-        param_dict=param_dict,
-        fold=None,
-    )
+    train(config=config, param_dict=param_dict)
