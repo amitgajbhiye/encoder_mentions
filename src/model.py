@@ -1,56 +1,45 @@
+import gc
+import logging
 import os
+import pickle
+import re
 import sys
 import time
-import logging
-import pickle
-import math
-import gc
 
 sys.path.insert(0, os.getcwd())
 
 import warnings
 from argparse import ArgumentParser
-from pprint import pprint
 
-import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
-from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
-from transformers import AutoConfig, AutoModel, AutoTokenizer
-
-from transformers import BertModel, BertForMaskedLM, BertTokenizer
-from transformers import (
-    RobertaModel,
-    RobertaForSequenceClassification,
-    RobertaTokenizer,
-)
-
-from transformers import (
-    DebertaV2Model,
-    DebertaV2ForSequenceClassification,
-    DebertaV2Tokenizer,
-)
-
-from je_utils import compute_scores, read_config, set_seed
 from pytorch_metric_learning import losses, miners
 from pytorch_metric_learning.samplers import MPerClassSampler
-from early_stop import EarlyStopping
-
+from torch.utils.data import DataLoader, Dataset, SequentialSampler
+from tqdm import tqdm, trange
 from transformers import (
     AdamW,
+    BertForMaskedLM,
+    BertModel,
+    BertTokenizer,
+    DebertaV2ForSequenceClassification,
+    DebertaV2Model,
+    DebertaV2Tokenizer,
+    RobertaForSequenceClassification,
+    RobertaModel,
+    RobertaTokenizer,
     get_constant_schedule_with_warmup,
-    get_linear_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
 )
+
+from early_stop import EarlyStopping
+from je_utils import read_config, set_seed
 
 warnings.filterwarnings("ignore")
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
-
 CLASSES = {
     "bert-base-uncased": (BertModel, BertForMaskedLM, BertTokenizer, 103),
     "bert-large-uncased": (
@@ -103,7 +92,6 @@ log = logging.getLogger(__name__)
 
 class DatasetConceptSentence(Dataset):
     def __init__(self, concept_sent_file, dataset_params):
-
         if isinstance(concept_sent_file, pd.DataFrame):
             self.data_df = concept_sent_file
             log.info(
@@ -137,16 +125,18 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
+        self.data_df = self.data_df.sample(frac=1)
         self.data_df.reset_index(inplace=True, drop=True)
-        self.data_df["label"] = 0
-        self.data_df.set_index("concept", inplace=True)
+        self.unique_cons = self.data_df["concept"].unique()
 
-        for l, idx in enumerate(self.data_df, start=1):
-                self.data_df.loc[idx, "label"] = l
+        self.data_df["labels"] = 0
+        self.data_df.set_index("concept", inplace=True)
+        for lbl, con in enumerate(self.unique_cons, start=1):
+            self.data_df.loc[con, "labels"] = lbl
         self.data_df.reset_index(inplace=True)
 
         log.info("Input DF")
-        log.info(self.data_df.head(n=20))
+        log.info(self.data_df.sample(n=100))
 
         self.hf_tokenizer_name = dataset_params["hf_tokenizer_name"]
         self.hf_tokenizer_path = dataset_params["hf_tokenizer_path"]
@@ -159,12 +149,8 @@ class DatasetConceptSentence(Dataset):
 
         self.max_len = dataset_params["max_len"]
 
-        self.sep_token = self.tokenizer.sep_token
-        self.cls_token = self.tokenizer.cls_token
         self.mask_token = self.tokenizer.mask_token
         self.mask_token_id = self.tokenizer.mask_token_id
-
-        self.print_freq = 0
 
     def __len__(self):
         return len(self.data_df)
@@ -172,11 +158,24 @@ class DatasetConceptSentence(Dataset):
     def __getitem__(self, idx):
         concept = self.data_df["concept"][idx]
         sent = self.data_df["sent"][idx]
-        label = self.data_df["label"][idx]
+        labels = self.data_df["labels"][idx]
 
+        return {"concept": concept, "sent": sent, "labels": labels}
 
-        encoded_dict = self.tokenizer.encode_plus(text=sent,
-            text_pair=None,
+    def find_whole_word(self, concept, sent):
+        pattern = re.compile(r"\b({0})\b".format(concept), flags=re.IGNORECASE)
+        return re.sub(pattern, self.mask_token, sent, count=1, flags=0)
+
+    def get_sent_ids(self, batch):
+        sents = [
+            self.find_whole_word(con, sent)
+            for con, sent in zip(batch["concept"], batch["sent"])
+        ]
+        print(f"Masked Sents")
+        print(sents)
+
+        encoded_dict = self.tokenizer.batch_encode_plus(
+            batch_text_or_text_pairs=sents,
             max_length=self.max_len,
             add_special_tokens=True,
             padding="max_length",
@@ -185,9 +184,7 @@ class DatasetConceptSentence(Dataset):
             return_token_type_ids=True,
         )
 
-        encoded_dict["concept"] = concept
-        encoded_dict["sent"] = sent
-        encoded_dict["label"] = label
+        encoded_dict["labels"] = batch["labels"]
 
         return encoded_dict
 
@@ -216,8 +213,8 @@ class ModelMentionEncoder(nn.Module):
         self,
         pretrained_con_embeds,
         input_ids,
-        token_type_ids,
         attention_mask,
+        token_type_ids=None,
         labels=None,
     ):
         outputs = self.encoder(
@@ -228,25 +225,19 @@ class ModelMentionEncoder(nn.Module):
 
         hidden_states = outputs.hidden_states[-1]
 
-        print(f"hidden_states : {hidden_states.shape}", flush=True)
-
         def get_mask_token_embeddings(last_layer_hidden_states):
             _, mask_token_index = (
                 input_ids == torch.tensor(self.mask_token_id)
             ).nonzero(as_tuple=True)
-
             mask_vectors = torch.vstack(
                 [
                     torch.index_select(v, 0, torch.tensor(idx))
                     for v, idx in zip(last_layer_hidden_states, mask_token_index)
                 ]
             )
-
             return mask_vectors
 
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
-        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
-
         emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
 
         if labels is None:
@@ -259,11 +250,16 @@ class ModelMentionEncoder(nn.Module):
         else:
             loss = self.loss_fn(emb_all, labels)
 
+        print(f"hidden_states : {hidden_states.shape}", flush=True)
+        print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
+        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
+        print(f"emb_all :{emb_all.shape}", flush=True)
+        print(f"labels :{labels.shape}", flush=True)
+
         return loss, mask_vectors
 
 
 def prepare_data_and_models(config):
-
     ############
     training_params = config["training_params"]
     dataset_params = config["dataset_params"]
@@ -280,17 +276,18 @@ def prepare_data_and_models(config):
     train_file = dataset_params["train_file_path"]
     valid_file = dataset_params["val_file_path"]
     test_file = dataset_params["test_file_path"]
-    
+
     num_workers = 4
 
     if train_file is not None:
         train_dataset = DatasetConceptSentence(train_file, dataset_params)
-        # train_sampler = RandomSampler(train_dataset)
-
         train_sampler = MPerClassSampler(
-                train_dataset.data_df["label"], m=1, batch_size=batch_size, length_before_new_iter=len(train_dataset.data_df["label"])
-            )
-        
+            train_dataset.data_df["labels"],
+            m=1,
+            batch_size=batch_size,
+            length_before_new_iter=len(train_dataset.data_df["labels"]),
+        )
+
         train_dataloader = DataLoader(
             train_dataset,
             batch_size=batch_size,
@@ -308,8 +305,11 @@ def prepare_data_and_models(config):
     if valid_file is not None:
         val_dataset = DatasetConceptSentence(valid_file, dataset_params)
         val_sampler = MPerClassSampler(
-                val_dataset.data_df["label"], m=1, batch_size=batch_size, length_before_new_iter=len(val_dataset.data_df["label"])
-            )
+            val_dataset.data_df["labels"],
+            m=1,
+            batch_size=batch_size,
+            length_before_new_iter=len(val_dataset.data_df["labels"]),
+        )
         val_dataloader = DataLoader(
             val_dataset,
             batch_size=batch_size,
@@ -354,446 +354,160 @@ def prepare_data_and_models(config):
 
         log.info(f"Loaded Pretrained Model")
 
-    model.to(device)
+    if torch.cuda.is_available():
+        n_gpu = torch.cuda.device_count()
+        if n_gpu > 1:
+            logging.info("using multiple GPUs")
+            model = torch.nn.DataParallel(model)
+        model.to(device=device)
 
-    # log.info("Model")
-    # log.info(model)
     log.info(f"model_class : {model.__class__.__name__}")
 
     if train_file is not None:
-
         optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-        
+
         if training_params["lr_schedule"] == "linear":
             scheduler = get_linear_schedule_with_warmup(
-                optimizer, len(train_dataloader) * 2, int(len(train_dataloader) * 1000)
+                optimizer,
+                len(train_dataloader) * 2,
+                int(len(train_dataloader) * max_epochs),
             )
         else:
             scheduler = get_cosine_schedule_with_warmup(
                 optimizer,
                 len(train_dataloader) * 2,
-                int(len(train_dataloader) * 1000),
+                int(len(train_dataloader) * max_epochs),
                 num_cycles=1.5,
             )
-        
-        
+
         return {
             "model": model,
             "scheduler": scheduler,
             "optimizer": scheduler,
             "train_dataset": train_dataset,
             "train_dataloader": train_dataloader,
-            "val_dataset":val_dataset,
+            "val_dataset": val_dataset,
             "val_dataloader": val_dataloader,
             "test_dataset": test_dataset,
-            "test_dataloader": test_dataloader
+            "test_dataloader": test_dataloader,
         }
     else:
-        assert load_pretrained == True and pretrained_model_path is not None, "Model Testing, specify load_pretrained and pretrained_model_path in config file"
-        return {"model":model, "test_dataloader": test_dataloader}
+        assert (
+            load_pretrained == True and pretrained_model_path is not None
+        ), "Model Testing, specify load_pretrained and pretrained_model_path in config file"
+        return {"model": model, "test_dataloader": test_dataloader}
 
 
-def evaluate(model, dataloader):
-    model.eval()
-
-    val_losses, val_preds, val_labels = [], [], []
-
-    for step, batch in enumerate(dataloader):
-        input_ids = batch["input_ids"].squeeze().to(device)
-        token_type_ids = batch["token_type_ids"].squeeze().to(device)
-        attention_mask = batch["attention_mask"].squeeze().to(device)
-
-        labels = batch["labels"].to(device)
-
-        with torch.no_grad():
-            outputs = model(
-                input_ids=input_ids,
-                token_type_ids=token_type_ids,
-                attention_mask=attention_mask,
-                labels=labels,
-            )
-
-        if isinstance(model, ModelConceptPropertyJoint) or isinstance(
-            model, ModelAnyNumberLabel
-        ):
-            loss, logits, mask_vectors = outputs
-            batch_preds = torch.round(torch.sigmoid(logits))
-
-        elif isinstance(model, ModelSeqClassificationConPropJoint):
-            loss, logits = outputs
-
-            batch_probs = logits.softmax(dim=1).squeeze(0)
-            batch_preds = torch.argmax(batch_probs, dim=1).flatten()
-
-        val_losses.append(loss.item())
-
-        val_preds.extend(batch_preds.cpu().detach().numpy())
-        val_labels.extend(labels.cpu().detach().numpy())
-
-    avg_val_loss = round(np.mean(val_losses), 4)
-
-    val_preds = np.array(val_preds).flatten()
-    val_labels = np.array(val_labels).flatten()
-
-    return avg_val_loss, val_preds, val_labels
-
-
-def get_pretrained_con_embeds(cons):
-    pass
-
-
-def train(
-    config,
-    param_dict
-    fold=None,
-):
+def train(config, param_dict):
     training_params = config["training_params"]
 
     max_epochs = training_params["max_epochs"]
+
+    model = param_dict["model"]
+    scheduler = param_dict["scheduler"]
+    optimizer = param_dict["scheduler"]
+
+    train_dataset = param_dict["train_dataset"]
+    train_dataloader = param_dict[" train_dataloader"]
+
+    val_dataset = param_dict["val_dataset"]
+    val_dataloader = param_dict["val_dataloader"]
+
     model_name = training_params["model_name"]
     save_dir = training_params["save_dir"]
-
     patience_early_stopping = training_params["patience_early_stopping"]
-
-    model =  param_dict["model"]
-    scheduler =  param_dict["scheduler"]
-    optimizer =  param_dict["scheduler"]
-    
-    train_dataset =  param_dict["train_dataset"]
-    train_dataloader =  param_dict[" train_dataloader"]
-
-    val_dataset=  param_dict["val_dataset"]
-    val_dataloader =  param_dict["val_dataloader"]
-    
-    test_dataset =  param_dict["test_dataset"]
-    test_dataloader=  param_dict["test_dataloader"]
-
-    best_valid_f1 = 0.0
-    patience_counter = 0
-    
-    start_epoch = 1
-
-    epoch_train_losses, epoch_valid_losses = [], []
-
-    (
-        best_model_to_test,
-        best_model_path,
-    ) = (
-        None,
-        None,
+    model_file = os.path.join(save_dir, model_name)
+    early_stopping = EarlyStopping(
+        patience=patience_early_stopping, verbose=True, path=model_file, delta=1e-10
     )
 
+    pretrained_con_embeds_path = training_params["pretrained_con_embeds_path"]
+    with open(pretrained_con_embeds_path, "rb") as embed_pkl:
+        pretrained_con_embeds_dict = pickle.load(embed_pkl)
 
-    for epoch in range(start_epoch, max_epochs + 1):
+    for epoch in trange(max_epochs, desc="Epoch"):
         log.info("Epoch {:} of {:}".format(epoch, max_epochs))
-
-        step_train_losses = []
-
+        train_loss = 0
         model.train()
+        for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+            print(f"Batch : {batch}", flush=True)
+            print(f"Batch['concept']: {batch['concept']}", flush=True)
+            print(f"Batch['sent']: {batch['sent']}", flush=True)
 
-        for step, batch in enumerate(train_dataloader):
+            pretrained_con_embeds = torch.tensor(
+                [pretrained_con_embeds_dict[con] for con in batch["concept"]]
+            ).to(device)
 
-            pretrained_con_embeds = get_pretrained_con_embeds(config, batch)
-            ids_dict = train_dataset.get_sent_ids(config, batch)
+            ids_dict = train_dataset.get_sent_ids(batch)
+            ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
 
             model.zero_grad()
+            outputs = model(pretrained_con_embeds=pretrained_con_embeds, **ids_dict)
+            loss, _ = outputs
 
-            sent_inp_ids = batch["input_ids"].squeeze().to(device)
-            sent_token_type_ids = batch["token_type_ids"].squeeze().to(device)
-            sent_atten_mask = batch["attention_mask"].squeeze().to(device)
-            labels = batch["labels"].to(device)
-
-            outputs = model(
-                pretrained_con_embeds=pretrained_con_embeds,
-                input_ids=sent_inp_ids,
-                token_type_ids=sent_token_type_ids,
-                attention_mask=sent_atten_mask,
-                labels=None,
-            )
-
-            loss, mask_vectors = outputs +++++++++++++++++++++++++
-
-            step_train_losses.append(loss.item())
-
+            if isinstance(model, torch.nn.DataParallel):
+                loss = loss.mean()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
             loss.backward()
             optimizer.step()
             scheduler.step()
 
-            if step % 100 == 0 and not step == 0:
-                log.info(
-                    "   Batch {} of Batch {} ---> Batch Loss {}".format(
-                        step, len(train_dataloader), round(loss.item(), 4)
-                    )
-                )
+            train_loss += loss.item()
 
-        avg_train_loss = round(np.mean(step_train_losses), 4)
-        log.info("Average Train Loss :", avg_train_loss)
+            del ids_dict
+            del pretrained_con_embeds
+            del loss
+            gc.collect()
 
-        if (val_dataloader is not None) and (fold is None):
-            log.info(f"Running Validation ....")
-            log.info(f"Model Class : {model.__class__.__name__}")
-
-            valid_loss, valid_preds, valid_gold_labels = evaluate(
-                model=model, dataloader=val_dataloader
-            )
-
-            scores = compute_scores(valid_gold_labels, valid_preds)
-            valid_binary_f1 = scores["binary_f1"]
-
-            if best_valid_f1 >= valid_binary_f1:
-                log.info(
-                    f"Current Binary F1 : {valid_binary_f1} is worse than or equal to previous best : {best_valid_f1}"
-                )
-                patience_counter += 1
-            else:
-                patience_counter = 0
-
-                log.info(f"{'*' * 50}")
-                log.info(
-                    f"Current Binary F1 : {valid_binary_f1} is better than previous best : {best_valid_f1}"
-                )
-                log.info("Epoch :", epoch)
-                log.info("   Best Validation F1:", best_valid_f1)
-
-                best_valid_f1 = valid_binary_f1
-
-                if best_model_path is not None:
-                    log.info(f"Deleting the previous best model : {best_model_path}")
-                    os.remove(best_model_path)
-
-                best_model_path = os.path.join(
-                    save_dir, f"val_score_{str(best_valid_f1)}_{model_name}"
-                )
-
-                log.info(
-                    f"Saving the current best Model at Epoch {epoch}: {best_model_path}"
-                )
-                torch.save(model.state_dict(), best_model_path)
-                log.info(f"The best model is saved at : {best_model_path}")
-
-                best_model_to_test = best_model_path
-
-            epoch_train_losses.append(avg_train_loss)
-            epoch_valid_losses.append(valid_loss)
-
-            log.info(f"valid_preds shape: {valid_preds.shape}")
-            log.info(f"val_gold_labels shape: {valid_gold_labels.shape}")
-
-            log.info(f"Current Validation F1 Score Binary {valid_binary_f1}")
-            log.info(f"Best Validation F1 Score Yet : {best_valid_f1}")
-
-            log.info("Validation Scores")
-            for key, value in scores.items():
-                log.info(f" {key} :  {value}")
-
-            if patience_counter >= patience_early_stopping:
-                log.info(f"Train Losses :", epoch_train_losses)
-                log.info(f"Validation Losses: ", epoch_valid_losses)
-
-                log.info(
-                    f"Early Stopping ---> Patience , {patience_early_stopping} Reached !!!"
-                )
-                log.info(f"The Best Validation Binary F1 : {best_valid_f1}")
-
-                log.info(f"The Best Model is saved at : {best_model_path}")
-                break
-
-    # if (test_dataloader is not None) and (fold is not None):
-    if test_dataloader is not None:
-        if fold is not None:
-            # For finetuning - Property Split and concept_property split.
-            # Fold will not be None
-
-            best_model_path = os.path.join(save_dir, f"{fold}_{model_name}")
-            torch.save(model.state_dict(), best_model_path)
-
-            log.info(f"Testing the Model on Fold : {fold}")
-            log.info(f"Testing the model after epochs : {max_epochs}")
-            log.info(f"The model for fold {fold} is saved at : {best_model_path}")
-
-        else:
-            # For pretraining for the datasets with a test set available;
-            # For pretraining the fold will be None
-
-            log.info(f"Fold is : {fold}")
-            best_model_path = best_model_to_test
-
-        model.load_state_dict(torch.load(best_model_path))
-
-        log.info(f"Testing the Model loaded from : {best_model_path}")
-
-        _, test_preds, test_gold_labels = evaluate(
-            model=model, dataloader=test_dataloader
-        )
-
-        scores = compute_scores(test_gold_labels, test_preds)
-
-        log.info(f"Fold: {fold}, test_gold_labels.shape : {test_gold_labels.shape}")
-        log.info(f"Fold: {fold}, test_preds.shape : {test_preds.shape}")
-
-        assert (
-            test_gold_labels.shape == test_preds.shape
-        ), "shape of fold's labels not equal to fold's preds"
-
-        log.info(f"************ Test Scores Fold {fold} ************")
-        for key, value in scores.items():
-            log.info(f" {key} :  {value}")
-
-        model.to(torch.device("cpu"))
-        del model
-        gc.collect()
+        log.info(f"train_step: {step}")
+        train_loss /= step + 1
         torch.cuda.empty_cache()
 
-        return test_preds, test_gold_labels
+        # Validation
+        model.eval()
+        val_loss = 0
+        for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
+            pretrained_con_embeds = torch.tensor(
+                [pretrained_con_embeds_dict[con] for con in batch["concept"]]
+            ).to(device)
 
+            ids_dict = val_dataset.get_sent_ids(batch)
+            ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
 
-################ Finetuning Code Starts Here ################
+            with torch.no_grad():
+                outputs = model(pretrained_con_embeds=pretrained_con_embeds, **ids_dict)
 
+            loss, _ = outputs
 
-def do_cv(config):
-    training_params = config["training_params"]
+            if isinstance(model, torch.nn.DataParallel):
+                loss = loss.mean()
+            val_loss += loss.item
 
-    cv_type = training_params["cv_type"]
-    data_dir = training_params["data_dir"]
-    # save_prefix = training_params["save_prefix"]
+            del ids_dict
+            del loss
+            gc.collect()
 
-    log.info(f"CV Type : {cv_type}")
+        log.info(f"val_step: {step}")
+        val_loss /= step + 1
 
-    if cv_type == "concept_split":
-        pass
+        log.info(
+            "Epoch: %d | train loss: %.4f | dev loss: %.4f ",
+            epoch + 1,
+            train_loss,
+            val_loss,
+        )
 
-    #     train_file_base_name = "train_mcrae"
-    #     test_file_base_name = "test_mcrae"
+        torch.cuda.empty_cache()
 
-    #     train_file_name = os.path.join(
-    #         data_dir, f"{save_prefix}_{train_file_base_name}.tsv"
-    #     )
-    #     test_file_name = os.path.join(
-    #         data_dir, f"{save_prefix}_{test_file_base_name}.tsv"
-    #     )
+        if epoch >= 5:
+            early_stopping(val_loss, model)
 
-    #     log.info(f"Train File Name : {train_file_name}")
-    #     log.info(f"Test File Name : {test_file_name}")
+        if early_stopping.early_stop:
+            logging.info("Early stopping. Model trained")
+            break
 
-    #     (
-    #         model,
-    #         scheduler,
-    #         optimizer,
-    #         train_dataloader,
-    #         val_dataloader,
-    #         test_dataloader,
-    #     ) = prepare_data_and_models(
-    #         config=config,
-    #         train_file=train_file_name,
-    #         valid_file=None,
-    #         test_file=test_file_name,
-    #     )
-
-    #     test_preds, test_gold_labels = train(
-    #         training_params,
-    #         model,
-    #         scheduler,
-    #         optimizer,
-    #         train_dataloader,
-    #         val_dataloader,
-    #         test_dataloader,
-    #         fold=None,
-    #     )
-
-    elif cv_type in ("property_split", "concept_property_split"):
-        if cv_type == "property_split":
-            num_fold = 5
-            train_file_base_name = "train_prop_split_con_prop.pkl"
-            test_file_base_name = "test_prop_split_con_prop.pkl"
-
-        elif cv_type == "concept_property_split":
-            num_fold = 9
-            train_file_base_name = "--------------"
-            test_file_base_name = "--------------"
-
-        else:
-            raise NameError(
-                "Specify cv_type from : 'concept_split', 'property_split', 'concept_property_split'"
-            )
-
-        log.info(f"Number of Folds : {num_fold}")
-        log.info(f"Data Dir : {data_dir}")
-        log.info(f"Train File Base Name : {train_file_base_name}")
-        log.info(f"Test File Base Name : {test_file_base_name}")
-
-        all_folds_test_preds, all_folds_test_labels = [], []
-        for fold in range(num_fold):
-            log.info("*" * 50)
-            log.info(f"Training the model on Fold : {fold} of {num_fold}")
-            log.info("*" * 50)
-
-            train_file_name = os.path.join(data_dir, f"{fold}_{train_file_base_name}")
-            test_file_name = os.path.join(data_dir, f"{fold}_{test_file_base_name}")
-
-            with open(train_file_name, "rb") as train_pkl, open(
-                test_file_name, "rb"
-            ) as test_pkl:
-                train_df = pickle.load(train_pkl)
-                test_df = pickle.load(test_pkl)
-
-            log.info(f"Train File Name : {train_file_name}")
-            log.info(f"Test File Name : {test_file_name}")
-
-            (
-                model,
-                scheduler,
-                optimizer,
-                train_dataloader,
-                val_dataloader,
-                test_dataloader,
-            ) = prepare_data_and_models(
-                config=config,
-                train_file=train_df,
-                valid_file=None,
-                test_file=test_df,
-            )
-
-            assert (
-                val_dataloader is None
-            ), "Validation data should be None for McRae dataset finetuning"
-
-            fold_test_preds, fold_test_gold_labels = train(
-                training_params,
-                model,
-                scheduler,
-                optimizer,
-                train_dataloader,
-                val_dataloader,
-                test_dataloader,
-                fold=fold,
-            )
-
-            all_folds_test_preds.extend(fold_test_preds)
-            all_folds_test_labels.extend(fold_test_gold_labels)
-
-        all_folds_test_preds = np.array(all_folds_test_preds).flatten()
-        all_folds_test_labels = np.array(all_folds_test_labels).flatten()
-
-        log.info(f"Shape of All Folds Preds : {all_folds_test_preds.shape}")
-        log.info(f"Shape of All Folds Labels : {all_folds_test_labels.shape}")
-
-        assert (
-            all_folds_test_preds.shape == all_folds_test_labels.shape
-        ), "shape of all folds labels not equal to all folds preds"
-
-        log.info("*" * 50)
-        log.info(f"Calculating the scores for All Folds")
-        print(f"Calculating the scores for All Folds", flush=True)
-
-        all_folds_scores = compute_scores(all_folds_test_labels, all_folds_test_preds)
-
-        for key, value in all_folds_scores.items():
-            log.info(f"{key} : {value}")
-            print(f"{key} : {value}", flush=True)
-
-        return all_folds_scores
+    torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
@@ -816,109 +530,11 @@ if __name__ == "__main__":
 
     log.info("The model is run with the following configuration")
     log.info(f"\n {config} \n")
-    pprint(config, sort_dicts=False)
 
-    training_params = config["training_params"]  # Training Parameters
+    param_dict = prepare_data_and_models(config=config)
 
-    pretrain = training_params["pretrain"]
-    finetune = training_params["finetune"]
-
-    log.info(f"Pretrain : {pretrain}")
-    log.info(f"Finetune : {finetune}")
-    hp_tuning = training_params["hp_tuning"]
-
-    if pretrain:
-        # train_file = training_params["train_file_path"]
-        # valid_file = training_params["val_file_path"]
-        # test_file = training_params["test_file_path"]
-
-        # log.info(f"Train File  : {train_file}")
-        # log.info(f"Valid File  : {valid_file}")
-        # log.info(f"Test File : {test_file}")
-
-        if not hp_tuning:
-            param_dict = prepare_data_and_models(config=config)
-            
-            train(config=config,
-                param_dict = param_dict
-                fold=None,
-            )
-        else:
-            pass
-
-    elif finetune:
-        if not hp_tuning:
-            all_folds_scores = do_cv(config=config)
-
-        else:
-            log.info("Grid Search - Hyperparameter Tuning")
-
-            epochs = [8, 10, 12]
-            batch_size = [32, 16]
-            learning_rate = [1e-5]
-            warmup_ratio = [0.06, 0.1, 0.15]
-            weight_decay = [0.01, 0.1]
-
-            log.info(f"Max Epochs :  {epochs}")
-            log.info(f"Batch Sizes : {batch_size}")
-            log.info(f"Learning Rates : {learning_rate}")
-            log.info(f"Warmup Ratio : {warmup_ratio}")
-            log.info(f"Weight Decay : {weight_decay}")
-
-            hp_combination_list, all_folds_scores_lists = [], []
-
-            for ep in epochs:
-                for bs in batch_size:
-                    for lr in learning_rate:
-                        for wr in warmup_ratio:
-                            for wd in weight_decay:
-                                log.info("*" * 60)
-                                log.info(
-                                    f"New Run : Epoch: {ep}, Batch Size: {bs}, LR: {lr}, warmup_ratio: {wr}, weight_decay: {wd}"
-                                )
-                                log.info("*" * 60)
-
-                                config["training_params"]["max_epochs"] = ep
-                                config["training_params"]["batch_size"] = bs
-                                config["training_params"]["lr"] = lr
-                                config["training_params"]["warmup_ratio"] = wr
-                                config["training_params"]["weight_decay"] = wd
-
-                                print(flush=True)
-                                print(
-                                    f"Running With Params Max Epochs, Batch Size, LR, WR:",
-                                    config["training_params"]["max_epochs"],
-                                    config["training_params"]["batch_size"],
-                                    config["training_params"]["lr"],
-                                    config["training_params"]["warmup_ratio"],
-                                    config["training_params"]["weight_decay"],
-                                )
-
-                                print(f"Running with new config", flush=True)
-                                pprint(config, sort_dicts=False)
-
-                                all_folds_scores = do_cv(config=config)
-                                print(
-                                    f"Above Resulst are Running With Params Max Epochs, Batch Size, LR :",
-                                    config["training_params"]["max_epochs"],
-                                    config["training_params"]["batch_size"],
-                                    config["training_params"]["lr"],
-                                    config["training_params"]["warmup_ratio"],
-                                    config["training_params"]["weight_decay"],
-                                )
-                                print("One Run Finished !!!", flush=True)
-                                print(flush=True)
-
-                                log.info("*" * 60)
-                                log.info(
-                                    f"Epoch: {ep}, Batch Size: {bs}, LR: {lr}, warmup_ratio: {wr}, weight_decay: {wd}"
-                                )
-
-                                for key, value in all_folds_scores.items():
-                                    log.info(f"{key} : {value}")
-                                log.info("*" * 60)
-
-                                hp_combination_list.append(
-                                    f"Epoch: {ep}, Batch Size: {bs}, LR: {lr}"
-                                )
-                                all_folds_scores_lists.append(all_folds_scores)
+    train(
+        config=config,
+        param_dict=param_dict,
+        fold=None,
+    )
