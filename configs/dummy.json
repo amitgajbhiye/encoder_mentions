@@ -5,7 +5,7 @@
         "dataset_name": "con_sent",
         "hf_tokenizer_name": "bert-large-uncased",
         "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
-        "max_len": 100,
+        "max_len": 120,
         "train_file_path": "data/cnetpchatgpt/con_0_1000_wiki_sents.tsv",
         "val_file_path": "data/cnetpchatgpt/con_0_1000_wiki_sents.tsv",
         "test_file_path": null
