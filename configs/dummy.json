@@ -19,7 +19,7 @@
     "training_params": {
         "load_pretrained": false,
         "pretrained_model_path": null,
-        "pretrained_con_embeds_path":"dataset/cnetpchatgpt/mention_enc_con_vocabembed_entropy_bert_large_cnetpchatgpt100k_entropy_model_concept_embeddings.pkl",
+        "pretrained_con_embeds_path":"data/cnetpchatgpt/mention_enc_con_vocabembed_entropy_bert_large_cnetpchatgpt100k_entropy_model_concept_embeddings.pkl",
         "batch_size": 32,
         "lr_schedule":"linear",
         "lr": 1e-5,
