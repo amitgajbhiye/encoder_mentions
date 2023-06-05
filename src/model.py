@@ -408,7 +408,7 @@ def train(config, param_dict):
     optimizer = param_dict["scheduler"]
 
     train_dataset = param_dict["train_dataset"]
-    train_dataloader = param_dict[" train_dataloader"]
+    train_dataloader = param_dict["train_dataloader"]
 
     val_dataset = param_dict["val_dataset"]
     val_dataloader = param_dict["val_dataloader"]
