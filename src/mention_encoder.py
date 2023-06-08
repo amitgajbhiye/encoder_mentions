@@ -113,7 +113,7 @@ class DatasetConceptSentence(Dataset):
                     "sent": str,
                 },
             )
-            log.info(f"Loaded Dataframe Shape: {self.data_df.shape}")
+            log.info(f"loaded_dataframe: {self.data_df}")
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
@@ -122,13 +122,14 @@ class DatasetConceptSentence(Dataset):
         self.unique_cons = self.data_df["concept"].unique()
 
         self.data_df["labels"] = 0
-        self.data_df.set_index("concept", inplace=True)
+        self.data_df.set_index("concept", inplace=True, drop=False)
+
         for lbl, con in enumerate(self.unique_cons, start=1):
             self.data_df.loc[con, "labels"] = lbl
-        self.data_df.reset_index(inplace=True)
+        self.data_df.reset_index(inplace=True, drop=False)
 
-        log.info("Input DF")
-        log.info(self.data_df.sample(n=100))
+        log.info("final_input_df")
+        log.info(self.data_df.head(n=100))
 
         self.hf_tokenizer_name = dataset_params["hf_tokenizer_name"]
         self.hf_tokenizer_path = dataset_params["hf_tokenizer_path"]
