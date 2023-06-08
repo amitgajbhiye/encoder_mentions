@@ -17,6 +17,6 @@
 
 conda activate venv
 
-python3 src/model.py --config_file configs/mention/bert_large.json
+python3 src/mention_encoder.py --config_file configs/mention/bert_large.json
 
 echo 'Job Finished !!!'
