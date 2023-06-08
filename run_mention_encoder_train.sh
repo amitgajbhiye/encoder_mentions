@@ -9,14 +9,14 @@
 #SBATCH --ntasks=5
 #SBATCH -A scw1858
 
-#SBATCH -p gpu_v100,gpu
-#SBATCH --gres=gpu:1
+#SBATCH -p gpu
+#SBATCH --gres=gpu:2
 
 #SBATCH --mem=16G
 #SBATCH -t 0-01:00:00
 
 conda activate venv
 
-python3 src/mention_encoder.py --config_file configs/mention/bert_large.json
+python3 src/mention_encoder.py --config_file configs/mention/bert_large_cnetpchatgpt_5k_cons.json
 
 echo 'Job Finished !!!'
