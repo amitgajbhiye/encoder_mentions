@@ -117,7 +117,7 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
-        self.data_df = self.data_df.sample(n=1000)
+        self.data_df = self.data_df.sample(frac=1)
         self.data_df.reset_index(inplace=True, drop=True)
         self.unique_cons = self.data_df["concept"].unique()
 
@@ -242,7 +242,7 @@ class ModelMentionEncoder(nn.Module):
         if labels is None:
             labels = torch.arange(mask_vectors.size(0))
         labels = torch.cat([labels, labels], dim=0)
-        print(f"labels :{labels.shape}: {labels}", flush=True)
+        print(f"labels :{labels.shape}: {labels}", flush=True, end="\n")
 
         if self.use_hard_pair:
             hard_pairs = self.miner(emb_all, labels)
@@ -398,7 +398,7 @@ def train(config, param_dict):
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             print(flush=True)
-            print(f"Batch : {batch}", flush=True)
+            # print(f"Batch : {batch}", flush=True)
             print(f"Batch['concept']: {batch['concept']}", flush=True)
             print(f"Batch['sent']: {batch['sent']}", flush=True)
 
