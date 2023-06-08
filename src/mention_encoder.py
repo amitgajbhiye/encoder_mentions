@@ -163,8 +163,9 @@ class DatasetConceptSentence(Dataset):
             self.find_whole_word(con, sent)
             for con, sent in zip(batch["concept"], batch["sent"])
         ]
-        print(f"masked_sents")
-        print(sents)
+        print(flush=True)
+        print(f"masked_sents", flush=True)
+        print(sents, flush=True)
 
         encoded_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=sents,
@@ -216,6 +217,8 @@ class ModelMentionEncoder(nn.Module):
         )
 
         hidden_states = outputs.hidden_states[-1]
+        print(f"hidden_states : {hidden_states.shape}", flush=True)
+        print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
 
         def get_mask_token_embeddings(last_layer_hidden_states):
             _, mask_token_index = (
@@ -230,17 +233,15 @@ class ModelMentionEncoder(nn.Module):
             return mask_vectors
 
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
+        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
+
         emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
         print(f"emb_all :{emb_all.shape}", flush=True)
 
         if labels is None:
             labels = torch.arange(mask_vectors.size(0))
         labels = torch.cat([labels, labels], dim=0)
-        print(f"labels :{labels.shape}", flush=True)
-
-        print(f"hidden_states : {hidden_states.shape}", flush=True)
-        print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
-        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
+        print(f"labels :{labels.shape}: {labels}", flush=True)
 
         if self.use_hard_pair:
             hard_pairs = self.miner(emb_all, labels)
