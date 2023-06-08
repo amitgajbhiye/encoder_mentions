@@ -164,7 +164,7 @@ class DatasetConceptSentence(Dataset):
             self.find_whole_word(con, sent)
             for con, sent in zip(batch["concept"], batch["sent"])
         ]
-        print(flush=True)
+
         print(f"masked_sents", flush=True)
         print(sents, flush=True)
 
@@ -397,6 +397,7 @@ def train(config, param_dict):
         train_loss = 0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+            print(flush=True)
             print(f"Batch : {batch}", flush=True)
             print(f"Batch['concept']: {batch['concept']}", flush=True)
             print(f"Batch['sent']: {batch['sent']}", flush=True)
