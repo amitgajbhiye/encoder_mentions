@@ -117,7 +117,7 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
-        self.data_df = self.data_df.sample(n=10000)
+        self.data_df = self.data_df.sample(n=1000)
         self.data_df.reset_index(inplace=True, drop=True)
         self.unique_cons = self.data_df["concept"].unique()
 
