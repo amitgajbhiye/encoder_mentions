@@ -126,7 +126,7 @@ class DatasetConceptSentence(Dataset):
 
         for lbl, con in enumerate(self.unique_cons, start=1):
             self.data_df.loc[con, "labels"] = lbl
-        self.data_df.reset_index(inplace=True, drop=False)
+        self.data_df.reset_index(inplace=True, drop=True)
 
         log.info("final_input_df")
         log.info(self.data_df.head(n=100))
