@@ -473,7 +473,7 @@ def train(config, param_dict):
 
         torch.cuda.empty_cache()
 
-        if epoch >= 5:
+        if epoch >= 2:
             early_stopping(val_loss, model)
 
         if early_stopping.early_stop:
