@@ -220,13 +220,16 @@ class ModelMentionEncoder(nn.Module):
         )
 
         hidden_states = outputs.hidden_states[-1]
-        print(f"hidden_states : {hidden_states.shape}", flush=True)
         print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
+        print(f"hidden_states : {hidden_states.shape}", flush=True)
 
         def get_mask_token_embeddings(last_layer_hidden_states):
             _, mask_token_index = (
                 input_ids == torch.tensor(self.mask_token_id)
             ).nonzero(as_tuple=True)
+
+            print(f"mask_token_index: {mask_token_index}", flush=True)
+
             mask_vectors = torch.vstack(
                 [
                     torch.index_select(v, 0, torch.tensor(idx))
@@ -401,8 +404,11 @@ def train(config, param_dict):
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             print(flush=True)
             # print(f"Batch : {batch}", flush=True)
-            print(f"batch['concept']: {batch['concept']}", flush=True)
-            print(f"batch['sent']: {batch['sent']}", flush=True)
+            print(
+                f"batch['concept']: {len(batch['concept'])}, {batch['concept']}",
+                flush=True,
+            )
+            print(f"batch['sent']: {len(batch['sent'])}, {batch['sent']}", flush=True)
 
             pretrained_con_embeds = torch.tensor(
                 [pretrained_con_embeds_dict[con] for con in batch["concept"]]
