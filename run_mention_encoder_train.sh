@@ -9,11 +9,11 @@
 #SBATCH --ntasks=5
 #SBATCH -A scw1858
 
-#SBATCH -p gpu,gpu_v100
-#SBATCH --gres=gpu:1
+#SBATCH -p gpu
+#SBATCH --gres=gpu:3
 
 #SBATCH --mem=16G
-#SBATCH -t 0-03:00:00
+#SBATCH -t 0-05:00:00
 
 conda activate venv
 
