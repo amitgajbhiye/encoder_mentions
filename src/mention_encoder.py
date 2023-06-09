@@ -155,13 +155,15 @@ class DatasetConceptSentence(Dataset):
 
         return {"concept": concept, "sent": sent, "labels": labels}
 
-    def find_whole_word(self, concept, sent):
-        pattern = re.compile(r"\b({0})\b".format(concept), flags=re.IGNORECASE)
-        return re.sub(pattern, self.mask_token, sent, count=1, flags=0)
+    def mask_word_in_sent(self, con, sent):
+        srch = re.search(con, sent, re.IGNORECASE)
+        mask_sent = sent.replace(sent[srch.start() : srch.end()], self.mask_token, 1)
+
+        return mask_sent
 
     def get_sent_ids(self, batch):
         sents = [
-            self.find_whole_word(con, sent)
+            self.mask_word_in_sent(con, sent)
             for con, sent in zip(batch["concept"], batch["sent"])
         ]
 
@@ -399,8 +401,8 @@ def train(config, param_dict):
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             print(flush=True)
             # print(f"Batch : {batch}", flush=True)
-            print(f"Batch['concept']: {batch['concept']}", flush=True)
-            print(f"Batch['sent']: {batch['sent']}", flush=True)
+            print(f"batch['concept']: {batch['concept']}", flush=True)
+            print(f"batch['sent']: {batch['sent']}", flush=True)
 
             pretrained_con_embeds = torch.tensor(
                 [pretrained_con_embeds_dict[con] for con in batch["concept"]]
