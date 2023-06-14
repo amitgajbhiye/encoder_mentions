@@ -96,11 +96,9 @@ class DatasetConceptSentence(Dataset):
                 concept_sent_file,
                 sep=",",
                 header=None,
-                names=["id", "concept", "example", "sent"],
+                names=["concept", "sent"],
                 dtype={
-                    "id": str,
                     "concept": str,
-                    "example": str,
                     "sent": str,
                 },
             )
@@ -149,10 +147,6 @@ class DatasetConceptSentence(Dataset):
         labels = self.data_df["labels"][idx]
 
         return {"concept": concept, "sent": sent, "labels": labels}
-
-    def find_whole_word(self, concept, sent):
-        pattern = re.compile(r"\b({0})\b".format(concept), flags=re.IGNORECASE)
-        return re.sub(pattern, self.mask_token, sent, count=1, flags=0)
 
     def get_sent_ids(self, batch):
         cons = batch["concept"]
