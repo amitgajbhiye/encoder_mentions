@@ -1,22 +1,22 @@
 #!/bin/bash --login
 
-#SBATCH --job-name=tMenEnc
+#SBATCH --job-name=defEnc
 
-#SBATCH --output=logs/mention_enc/out_bert_large_cnetpchatgpt_5k_cons.txt
-#SBATCH --error=logs/mention_enc/err_bert_large_cnetpchatgpt_5k_cons.txt
+#SBATCH --output=logs/definition_enc/out_bert_large_wordnet_codwoe_data.txt
+#SBATCH --error=logs/definition_enc/err_bert_large_wordnet_codwoe_data.txt
 
 #SBATCH --tasks-per-node=5
 #SBATCH --ntasks=5
 #SBATCH -A scw1858
 
-#SBATCH -p gpu_v100,gpu
+#SBATCH -p gpu_v100
 #SBATCH --gres=gpu:2
 
 #SBATCH --mem=16G
-#SBATCH -t 2-00:00:00
+#SBATCH -t 1-15:00:00
 
 conda activate venv
 
-python3 src/mention_encoder.py --config_file configs/mention/bert_large_cnetpchatgpt_5k_cons.json
+python3 src/definition_encoder.py --config_file configs/definition/bert_large_wordnet_codwoe.json
 
 echo 'Job Finished !!!'

@@ -120,7 +120,10 @@ class DatasetConceptSentence(Dataset):
             self.data_df.loc[con, "labels"] = lbl
         self.data_df.reset_index(inplace=True)
 
-        log.info("Input DF")
+        log.info("input_df_head")
+        log.info(self.data_df.head(n=100))
+
+        log.info("input_df_sample")
         log.info(self.data_df.sample(n=100))
 
         self.hf_tokenizer_name = dataset_params["hf_tokenizer_name"]
@@ -155,7 +158,9 @@ class DatasetConceptSentence(Dataset):
         cons = batch["concept"]
         sents = batch["sent"]
 
-        assert len(cons) == len(sents)
+        assert len(cons) == len(
+            sents
+        ), f"len(cons) {len(cons)} != len(sents) {len(sents)}"
 
         middle_index = len(cons) // 2
 
@@ -167,8 +172,8 @@ class DatasetConceptSentence(Dataset):
 
         masked_sents = masked_sents_1 + masked_sents_2
 
-        print(f"masked_sents")
-        print(masked_sents)
+        # print(f"original_sents : {sents}", flush=True)
+        print(f"masked_sents {masked_sents}", flush=True)
 
         encoded_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=masked_sents,
@@ -390,6 +395,8 @@ def train(config, param_dict):
         patience=patience_early_stopping, verbose=True, path=model_file, delta=1e-10
     )
 
+    log.info(f"model_name_file : {model_file}")
+
     pretrained_con_embeds_path = training_params["pretrained_con_embeds_path"]
     with open(pretrained_con_embeds_path, "rb") as embed_pkl:
         pretrained_con_embeds_dict = pickle.load(embed_pkl)
@@ -455,7 +462,6 @@ def train(config, param_dict):
             val_loss += loss.item()
 
             del ids_dict
-            del loss
             gc.collect()
 
         log.info(f"val_step: {step}")
@@ -472,7 +478,7 @@ def train(config, param_dict):
 
         torch.cuda.empty_cache()
 
-        if epoch >= 5:
+        if epoch >= 3:
             early_stopping(val_loss, model)
 
         if early_stopping.early_stop:
