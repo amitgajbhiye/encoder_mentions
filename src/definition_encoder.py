@@ -440,6 +440,10 @@ def train(config, param_dict):
         model.eval()
         val_loss = 0
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
+            print(flush=True)
+            print(f"Validation Batch['concept']: {batch['concept']}", flush=True)
+            print(f"Validation Batch['sent']: {batch['sent']}", flush=True)
+
             pretrained_con_embeds = torch.tensor(
                 [pretrained_con_embeds_dict[con] for con in batch["concept"]]
             ).to(device)
