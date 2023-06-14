@@ -94,7 +94,7 @@ class DatasetConceptSentence(Dataset):
             log.info(f"Loading into Dataframe ... ")
             self.data_df = pd.read_csv(
                 concept_sent_file,
-                sep=",",
+                sep="\t",
                 header=None,
                 names=["concept", "sent"],
                 dtype={
