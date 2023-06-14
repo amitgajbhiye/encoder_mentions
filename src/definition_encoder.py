@@ -159,7 +159,7 @@ class DatasetConceptSentence(Dataset):
         middle_index = len(cons) // 2
 
         masked_sents_1 = [
-            f"a {self.mask_token} is a {sent}" for sent in sents[:middle_index]
+            f"a {self.mask_token} is {sent}" for sent in sents[:middle_index]
         ]
 
         masked_sents_2 = [f"{self.mask_token}: {sent}" for sent in sents[middle_index:]]
@@ -400,7 +400,8 @@ def train(config, param_dict):
         train_loss = 0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
-            print(f"Batch : {batch}", flush=True)
+            # print(f"Batch : {batch}", flush=True)
+            print(flush=True)
             print(f"Batch['concept']: {batch['concept']}", flush=True)
             print(f"Batch['sent']: {batch['sent']}", flush=True)
 
