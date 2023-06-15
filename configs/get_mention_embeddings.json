@@ -1,0 +1,22 @@
+{
+    "experiment_name": "get_mention_embedding",
+    "log_dirctory": "get_embeddings",
+    "dataset_params": {
+        "dataset_name": "word_mention",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 100, 
+        "concept_sentence_file": "data/mention/cnetpchatgpt/dummy_val_con_sent.tsv"
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model"
+    },
+    "inference_params": {
+        "load_pretrained": true,
+        "pretrained_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
+        "save_dir": "trained_models/mention_embeddings"
+
+    }
+    
+}
