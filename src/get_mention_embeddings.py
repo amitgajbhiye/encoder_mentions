@@ -427,7 +427,7 @@ def train(config, param_dict):
         with torch.no_grad():
             outputs = model(pretrained_con_embeds=None, **ids_dict)
 
-        loss, mask_vectors = outputs
+        mask_vectors = outputs
 
         print(f"mask_vectors.shape : {mask_vectors}")
 
