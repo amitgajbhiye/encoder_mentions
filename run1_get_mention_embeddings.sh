@@ -17,6 +17,6 @@
 
 conda activate venv
 
-python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings.json
+python3 src/1get_mention_embeddings.py --config_file configs/get_mention_embeddings.json
 
 echo 'Job Finished !!!'

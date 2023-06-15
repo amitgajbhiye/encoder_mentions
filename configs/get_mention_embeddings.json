@@ -1,23 +1,34 @@
 {
-    "experiment_name": "get_mention_embedding",
-    "log_dirctory": "get_embeddings",
+    "experiment_name": "bert_large_cnetpchatgpt_5k_cons",
+    "log_dirctory": "mention_enc",
     "dataset_params": {
-        "dataset_name": "word_mention",
+        "dataset_name": "con_sent",
         "hf_tokenizer_name": "bert-large-uncased",
         "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
-        "max_len": 100, 
-        "concept_sentence_file": "data/mention/cnetpchatgpt/dummy_val_con_sent.tsv"
+        "max_len": 120,
+        "train_file_path": null,
+        "val_file_path": null,
+        "test_file_path": "data/mention/cnetpchatgpt/dummy_val_con_sent.tsv"
     },
     "model_params": {
         "hf_checkpoint_name": "bert-large-uncased",
-        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model"
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
+        "tau": 0.05,
+        "use_hard_pair": false
     },
-    "inference_params": {
+    "training_params": {
         "load_pretrained": true,
         "pretrained_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
-        "save_dir": "trained_models/mention_embeddings",
-        "batch_size":10
-
+        "pretrained_con_embeds_path":"data/cnetpchatgpt/mention_enc_con_vocabembed_entropy_bert_large_cnetpchatgpt100k_entropy_model_concept_embeddings.pkl",
+        "batch_size": 32,
+        "lr_schedule":"cosine",
+        "lr": 2e-6,
+        "max_epochs": 1000,
+        "warmup_ratio": 0,
+        "patience_early_stopping": 2,
+        "save_dir": "trained_models/mention_enc",
+        "model_name": "bert_large_cnetpchatgpt_5k_cons.pt",
+        "weight_decay": 0.01
     }
     
 }
