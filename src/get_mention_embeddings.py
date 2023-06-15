@@ -357,12 +357,12 @@ def prepare_data_and_models(config):
 
         log.info(f"Loaded Pretrained Model")
 
-    # if torch.cuda.is_available():
-    #     n_gpu = torch.cuda.device_count()
-    #     if n_gpu > 1:
-    #         logging.info(f"using multiple GPUs: {n_gpu}")
-    #         model = nn.DataParallel(model)
-    #     model.to(device=device)
+    if torch.cuda.is_available():
+        n_gpu = torch.cuda.device_count()
+        if n_gpu > 1:
+            logging.info(f"using multiple GPUs: {n_gpu}")
+            model = nn.DataParallel(model)
+        model.to(device=device)
 
     log.info(f"model_class : {model.__class__.__name__}")
 
@@ -429,7 +429,9 @@ def train(config, param_dict):
 
         mask_vectors = outputs
 
+        print(f"*************************************")
         print(f"mask_vectors.shape : {mask_vectors}")
+        print(f"*************************************")
 
 
 if __name__ == "__main__":
