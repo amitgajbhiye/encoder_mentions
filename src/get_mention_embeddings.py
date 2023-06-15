@@ -118,16 +118,16 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
-        self.data_df = self.data_df.sample(frac=1)
-        self.data_df.reset_index(inplace=True, drop=True)
-        self.unique_cons = self.data_df["concept"].unique()
+        # self.data_df = self.data_df.sample(frac=1)
+        # self.data_df.reset_index(inplace=True, drop=True)
+        # self.unique_cons = self.data_df["concept"].unique()
 
-        self.data_df["labels"] = 0
-        self.data_df.set_index("concept", inplace=True, drop=False)
+        # self.data_df["labels"] = 0
+        # self.data_df.set_index("concept", inplace=True, drop=False)
 
-        for lbl, con in enumerate(self.unique_cons, start=1):
-            self.data_df.loc[con, "labels"] = lbl
-        self.data_df.reset_index(inplace=True, drop=True)
+        # for lbl, con in enumerate(self.unique_cons, start=1):
+        #     self.data_df.loc[con, "labels"] = lbl
+        # self.data_df.reset_index(inplace=True, drop=True)
 
         log.info("final_input_df")
         log.info(self.data_df.head(n=100))
@@ -152,9 +152,10 @@ class DatasetConceptSentence(Dataset):
     def __getitem__(self, idx):
         concept = self.data_df["concept"][idx]
         sent = self.data_df["sent"][idx]
-        labels = self.data_df["labels"][idx]
+        # labels = self.data_df["labels"][idx]
 
-        return {"concept": concept, "sent": sent, "labels": labels}
+        # return {"concept": concept, "sent": sent, "labels": labels}
+        return {"concept": concept, "sent": sent}
 
     def mask_word_in_sent(self, con, sent):
         srch = re.search(con, sent, re.IGNORECASE)
@@ -181,7 +182,7 @@ class DatasetConceptSentence(Dataset):
             return_token_type_ids=True,
         )
 
-        encoded_dict["labels"] = batch["labels"]
+        # encoded_dict["labels"] = batch["labels"]
 
         return encoded_dict
 
@@ -208,10 +209,10 @@ class ModelMentionEncoder(nn.Module):
 
     def forward(
         self,
-        pretrained_con_embeds,
         input_ids,
         attention_mask,
         token_type_ids=None,
+        pretrained_con_embeds=None,
         labels=None,
     ):
         outputs = self.encoder(
@@ -242,21 +243,23 @@ class ModelMentionEncoder(nn.Module):
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
         print(f"mask_vectors :{mask_vectors.shape}", flush=True)
 
-        emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
-        print(f"emb_all :{emb_all.shape}", flush=True)
+        # emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
+        # print(f"emb_all :{emb_all.shape}", flush=True)
 
-        if labels is None:
-            labels = torch.arange(mask_vectors.size(0))
-        labels = torch.cat([labels, labels], dim=0)
-        print(f"labels :{labels.shape}: {labels}", flush=True, end="\n")
+        # if labels is None:
+        #     labels = torch.arange(mask_vectors.size(0))
+        # labels = torch.cat([labels, labels], dim=0)
+        # print(f"labels :{labels.shape}: {labels}", flush=True, end="\n")
 
-        if self.use_hard_pair:
-            hard_pairs = self.miner(emb_all, labels)
-            loss = self.loss_fn(emb_all, labels, hard_pairs)
-        else:
-            loss = self.loss_fn(emb_all, labels)
+        # if self.use_hard_pair:
+        #     hard_pairs = self.miner(emb_all, labels)
+        #     loss = self.loss_fn(emb_all, labels, hard_pairs)
+        # else:
+        #     loss = self.loss_fn(emb_all, labels)
 
-        return loss, mask_vectors
+        # return loss, mask_vectors
+
+        return mask_vectors
 
 
 def prepare_data_and_models(config):
@@ -380,14 +383,20 @@ def prepare_data_and_models(config):
                 num_cycles=1.5,
             )
 
+    # return {
+    #     "model": model,
+    #     "scheduler": scheduler,
+    #     "optimizer": scheduler,
+    #     "train_dataset": train_dataset,
+    #     "train_dataloader": train_dataloader,
+    #     "val_dataset": val_dataset,
+    #     "val_dataloader": val_dataloader,
+    #     "con_sent_dataset": con_sent_dataset,
+    #     "con_sent_dataloader": con_sent_dataloader,
+    # }
+
     return {
         "model": model,
-        "scheduler": scheduler,
-        "optimizer": scheduler,
-        "train_dataset": train_dataset,
-        "train_dataloader": train_dataloader,
-        "val_dataset": val_dataset,
-        "val_dataloader": val_dataloader,
         "con_sent_dataset": con_sent_dataset,
         "con_sent_dataloader": con_sent_dataloader,
     }
