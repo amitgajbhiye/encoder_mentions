@@ -180,8 +180,6 @@ class ModelMentionEncoder(nn.Module):
             self.hf_model_path, output_hidden_states=True
         )
 
-        self.use_hard_pair = model_params["use_hard_pair"]
-
     def forward(
         self,
         input_ids,
