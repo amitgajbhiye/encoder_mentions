@@ -406,7 +406,7 @@ def train(config, param_dict):
     model = param_dict["model"]
 
     con_sent_dataset = param_dict["con_sent_dataset"]
-    con_sent_dataloader = ["con_sent_dataloader"]
+    con_sent_dataloader = param_dict["con_sent_dataloader"]
 
     training_params = config["training_params"]
 
