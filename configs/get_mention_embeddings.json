@@ -1,6 +1,6 @@
 {
-    "experiment_name": "bert_large_cnetpchatgpt_5k_cons",
-    "log_dirctory": "mention_enc",
+    "experiment_name": "get_embeddings",
+    "log_dirctory": "get_embeddings",
     "dataset_params": {
         "dataset_name": "con_sent",
         "hf_tokenizer_name": "bert-large-uncased",
