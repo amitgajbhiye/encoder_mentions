@@ -15,7 +15,8 @@
     "inference_params": {
         "load_pretrained": true,
         "pretrained_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
-        "save_dir": "trained_models/mention_embeddings"
+        "save_dir": "trained_models/mention_embeddings",
+        "batch_size":10
 
     }
     
