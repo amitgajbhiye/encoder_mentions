@@ -2,7 +2,7 @@
     "experiment_name": "get_embeddings",
     "log_dirctory": "get_embeddings",
     "dataset_params": {
-        "dataset_name": "con_sent",
+        "dataset_name": "dummy_4_con_sent",
         "hf_tokenizer_name": "bert-large-uncased",
         "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
         "max_len": 120,

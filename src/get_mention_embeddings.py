@@ -19,7 +19,6 @@ from pytorch_metric_learning.samplers import MPerClassSampler
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm, trange
 from transformers import (
-    AdamW,
     BertForMaskedLM,
     BertModel,
     BertTokenizer,
@@ -27,11 +26,9 @@ from transformers import (
     DebertaV2Tokenizer,
     RobertaModel,
     RobertaTokenizer,
-    get_cosine_schedule_with_warmup,
-    get_linear_schedule_with_warmup,
 )
 
-from early_stop import EarlyStopping
+
 from je_utils import read_config, set_seed
 from torch.utils.data import DataLoader, Dataset, SequentialSampler
 
@@ -270,63 +267,64 @@ def prepare_data_and_models(config):
 
     load_pretrained = training_params["load_pretrained"]
     pretrained_model_path = training_params["pretrained_model_path"]
-    lr = training_params["lr"]
-    weight_decay = training_params["weight_decay"]
-    max_epochs = training_params["max_epochs"]
+
+    # lr = training_params["lr"]
+    # weight_decay = training_params["weight_decay"]
+    # max_epochs = training_params["max_epochs"]
     batch_size = training_params["batch_size"]
 
-    train_file = dataset_params["train_file_path"]
-    valid_file = dataset_params["val_file_path"]
+    # train_file = dataset_params["train_file_path"]
+    # valid_file = dataset_params["val_file_path"]
     test_file = dataset_params["test_file_path"]
 
     num_workers = 4
 
-    if train_file is not None:
-        train_dataset = DatasetConceptSentence(train_file, dataset_params)
-        train_sampler = MPerClassSampler(
-            train_dataset.data_df["labels"],
-            m=1,
-            batch_size=batch_size,
-            length_before_new_iter=len(train_dataset.data_df["labels"]),
-        )
+    # if train_file is not None:
+    #     train_dataset = DatasetConceptSentence(train_file, dataset_params)
+    #     train_sampler = MPerClassSampler(
+    #         train_dataset.data_df["labels"],
+    #         m=1,
+    #         batch_size=batch_size,
+    #         length_before_new_iter=len(train_dataset.data_df["labels"]),
+    #     )
 
-        train_dataloader = DataLoader(
-            train_dataset,
-            batch_size=batch_size,
-            sampler=train_sampler,
-            collate_fn=None,
-            num_workers=num_workers,
-            pin_memory=True,
-        )
+    #     train_dataloader = DataLoader(
+    #         train_dataset,
+    #         batch_size=batch_size,
+    #         sampler=train_sampler,
+    #         collate_fn=None,
+    #         num_workers=num_workers,
+    #         pin_memory=True,
+    #     )
 
-        log.info(f"Train Data DF shape : {train_dataset.data_df.shape}")
-    else:
-        log.info(f"Train File is Empty.")
-        train_dataset = None
-        train_dataloader = None
+    #     log.info(f"Train Data DF shape : {train_dataset.data_df.shape}")
+    # else:
+    #     log.info(f"Train File is Empty.")
+    #     train_dataset = None
+    #     train_dataloader = None
 
-    if valid_file is not None:
-        val_dataset = DatasetConceptSentence(valid_file, dataset_params)
-        val_sampler = MPerClassSampler(
-            val_dataset.data_df["labels"],
-            m=1,
-            batch_size=batch_size,
-            length_before_new_iter=len(val_dataset.data_df["labels"]),
-        )
-        val_dataloader = DataLoader(
-            val_dataset,
-            batch_size=batch_size,
-            sampler=val_sampler,
-            collate_fn=None,
-            num_workers=num_workers,
-            pin_memory=True,
-            drop_last=False,
-        )
-        log.info(f"Valid Data DF shape : {val_dataset.data_df.shape}")
-    else:
-        log.info(f"Validation File is Empty.")
-        val_dataset = None
-        val_dataloader = None
+    # if valid_file is not None:
+    #     val_dataset = DatasetConceptSentence(valid_file, dataset_params)
+    #     val_sampler = MPerClassSampler(
+    #         val_dataset.data_df["labels"],
+    #         m=1,
+    #         batch_size=batch_size,
+    #         length_before_new_iter=len(val_dataset.data_df["labels"]),
+    #     )
+    #     val_dataloader = DataLoader(
+    #         val_dataset,
+    #         batch_size=batch_size,
+    #         sampler=val_sampler,
+    #         collate_fn=None,
+    #         num_workers=num_workers,
+    #         pin_memory=True,
+    #         drop_last=False,
+    #     )
+    #     log.info(f"Valid Data DF shape : {val_dataset.data_df.shape}")
+    # else:
+    #     log.info(f"Validation File is Empty.")
+    #     val_dataset = None
+    #     val_dataloader = None
 
     if test_file is not None:
         con_sent_dataset = DatasetConceptSentence(test_file, dataset_params)
@@ -367,21 +365,21 @@ def prepare_data_and_models(config):
 
     log.info(f"model_class : {model.__class__.__name__}")
 
-    if train_file:
-        optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-        if training_params["lr_schedule"] == "linear":
-            scheduler = get_linear_schedule_with_warmup(
-                optimizer,
-                len(train_dataloader) * 2,
-                int(len(train_dataloader) * max_epochs),
-            )
-        else:
-            scheduler = get_cosine_schedule_with_warmup(
-                optimizer,
-                len(train_dataloader) * 2,
-                int(len(train_dataloader) * max_epochs),
-                num_cycles=1.5,
-            )
+    # if train_file:
+    #     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    #     if training_params["lr_schedule"] == "linear":
+    #         scheduler = get_linear_schedule_with_warmup(
+    #             optimizer,
+    #             len(train_dataloader) * 2,
+    #             int(len(train_dataloader) * max_epochs),
+    #         )
+    #     else:
+    #         scheduler = get_cosine_schedule_with_warmup(
+    #             optimizer,
+    #             len(train_dataloader) * 2,
+    #             int(len(train_dataloader) * max_epochs),
+    #             num_cycles=1.5,
+    #         )
 
     # return {
     #     "model": model,
@@ -402,22 +400,17 @@ def prepare_data_and_models(config):
     }
 
 
-def train(config, param_dict):
+def run_model(config, param_dict):
     model = param_dict["model"]
 
     con_sent_dataset = param_dict["con_sent_dataset"]
     con_sent_dataloader = param_dict["con_sent_dataloader"]
 
     training_params = config["training_params"]
+    dataset_params = config["dataset_params"]
 
-    save_dir = training_params["save_dir"]
-
-    # pretrained_con_embeds_path = training_params["pretrained_con_embeds_path"]
-    # with open(pretrained_con_embeds_path, "rb") as embed_pkl:
-    #     pretrained_con_embeds_dict = pickle.load(embed_pkl)
-
+    con_sent_embed = []
     model.eval()
-
     for step, batch in enumerate(tqdm(con_sent_dataloader, desc="Iter")):
         print(f"concept : {batch['concept']}", flush=True)
         print(f"sents : {batch['sent']}", flush=True)
@@ -429,10 +422,25 @@ def train(config, param_dict):
             outputs = model(pretrained_con_embeds=None, **ids_dict)
 
         mask_vectors = outputs
+        mask_vectors = mask_vectors.cpu()
 
         print(f"*************************************")
         print(f"mask_vectors.shape : {mask_vectors}")
         print(f"*************************************")
+
+        for con, sent, embed in zip(batch[0], batch[1], mask_vectors):
+            con_sent_embed.append((con, sent, embed))
+
+    save_dir = training_params["save_dir"]
+    dataset_name = dataset_params["dataset_name"]
+
+    out_file_name = os.path.join(save_dir, dataset_name)
+
+    with open(out_file_name, "wb") as pkl_file:
+        pickle.dump(con_sent_embed, pkl_file, protocol=pickle.DEFAULT_PROTOCOL)
+
+    log.info(f"Embeddings are saved in : {out_file_name}")
+    log.info("Program Finished.")
 
 
 if __name__ == "__main__":
@@ -458,4 +466,4 @@ if __name__ == "__main__":
 
     param_dict = prepare_data_and_models(config=config)
 
-    train(config=config, param_dict=param_dict)
+    run_model(config=config, param_dict=param_dict)
