@@ -422,7 +422,7 @@ def run_model(config, param_dict):
             outputs = model(pretrained_con_embeds=None, **ids_dict)
 
         mask_vectors = outputs
-        mask_vectors = mask_vectors.cpu()
+        mask_vectors = mask_vectors.cpu().numpy()
 
         print(f"*************************************")
         print(f"mask_vectors.shape : {mask_vectors.shape}")
@@ -435,7 +435,7 @@ def run_model(config, param_dict):
     save_dir = training_params["save_dir"]
     dataset_name = dataset_params["dataset_name"]
 
-    out_file_name = os.path.join(save_dir, dataset_name)
+    out_file_name = os.path.join(save_dir, f"{dataset_name}.pkl")
 
     with open(out_file_name, "wb") as pkl_file:
         pickle.dump(con_sent_embed, pkl_file, protocol=pickle.DEFAULT_PROTOCOL)
