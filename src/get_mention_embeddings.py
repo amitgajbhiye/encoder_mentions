@@ -166,8 +166,8 @@ class DatasetConceptSentence(Dataset):
             for con, sent in zip(batch["concept"], batch["sent"])
         ]
 
-        print(f"masked_sents", flush=True)
-        print(sents, flush=True)
+        # print(f"masked_sents", flush=True)
+        # print(sents, flush=True)
 
         encoded_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=sents,
@@ -425,10 +425,11 @@ def run_model(config, param_dict):
         mask_vectors = mask_vectors.cpu()
 
         print(f"*************************************")
-        print(f"mask_vectors.shape : {mask_vectors}")
+        print(f"mask_vectors.shape : {mask_vectors.shape}")
+        print(f"mask_vectors : {mask_vectors}")
         print(f"*************************************")
 
-        for con, sent, embed in zip(batch[0], batch[1], mask_vectors):
+        for con, sent, embed in zip(batch["concept"], batch["sent"], mask_vectors):
             con_sent_embed.append((con, sent, embed))
 
     save_dir = training_params["save_dir"]
