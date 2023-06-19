@@ -12,7 +12,7 @@
 #SBATCH -p gpu,gpu_v100
 #SBATCH --gres=gpu:1
 
-#SBATCH --mem=30G
+#SBATCH --mem=25G
 #SBATCH -t 1-00:00:00
 
 conda activate venv
@@ -20,6 +20,12 @@ conda activate venv
 python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/environment_ev_taxo.json
 python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/equipment_taxo.json
 python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/food_taxo.json
+python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/science_ev_taxo.json
+
 python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/science_taxo.json
+python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/wn_chemical_taxo.json
+python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/wn_equipment_taxo.json
+python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/wn_science_taxo.json
+
 
 echo 'Job Finished !!!'

@@ -8,7 +8,7 @@
         "max_len": 120,
         "train_file_path": null,
         "val_file_path": null,
-        "test_file_path": "data/taxonomy_evaluation_sentences/sentences_science.taxo_clean.tsv"
+        "test_file_path": "data/clean_taxonomy_evaluation_sentences/sentences_science.taxo.tsv"
     },
     "model_params": {
         "hf_checkpoint_name": "bert-large-uncased",

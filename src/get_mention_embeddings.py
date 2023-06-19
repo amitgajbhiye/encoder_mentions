@@ -115,17 +115,6 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
-        # self.data_df = self.data_df.sample(frac=1)
-        # self.data_df.reset_index(inplace=True, drop=True)
-        # self.unique_cons = self.data_df["concept"].unique()
-
-        # self.data_df["labels"] = 0
-        # self.data_df.set_index("concept", inplace=True, drop=False)
-
-        # for lbl, con in enumerate(self.unique_cons, start=1):
-        #     self.data_df.loc[con, "labels"] = lbl
-        # self.data_df.reset_index(inplace=True, drop=True)
-
         log.info("final_input_df")
         log.info(self.data_df.head(n=100))
 
@@ -149,25 +138,43 @@ class DatasetConceptSentence(Dataset):
     def __getitem__(self, idx):
         concept = self.data_df["concept"][idx]
         sent = self.data_df["sent"][idx]
-        # labels = self.data_df["labels"][idx]
 
-        # return {"concept": concept, "sent": sent, "labels": labels}
         return {"concept": concept, "sent": sent}
 
-    def mask_word_in_sent(self, con, sent):
-        srch = re.search(con, sent, re.IGNORECASE)
-        mask_sent = sent.replace(sent[srch.start() : srch.end()], self.mask_token, 1)
+    ############## Old ##############
+    # def mask_word_in_sent(self, con, sent):
+    #     srch = re.search(con, sent, re.IGNORECASE)
+    #     mask_sent = sent.replace(sent[srch.start() : srch.end()], self.mask_token, 1)
 
-        return mask_sent
+    #     return mask_sent
+    ############## Old ##############
+
+    def mask_word_in_sent(self, search_string, input_string):
+        # Create a raw string with word boundaries from the user's input_string
+        raw_search_string = r"\b" + search_string + r"\b"
+
+        srch_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
+
+        no_match_was_found = srch_output is None
+
+        if no_match_was_found:
+            return -1
+        else:
+            start_idx = srch_output.start()
+            end_idx = srch_output.end()
+
+            mask_sent = (
+                input_string[:start_idx] + self.mask_token + input_string[end_idx:]
+            )
+            print(f"mask_sent : {mask_sent}", flush=True)
+
+            return True
 
     def get_sent_ids(self, batch):
         sents = [
             self.mask_word_in_sent(con, sent)
             for con, sent in zip(batch["concept"], batch["sent"])
         ]
-
-        # print(f"masked_sents", flush=True)
-        # print(sents, flush=True)
 
         encoded_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=sents,
@@ -178,8 +185,6 @@ class DatasetConceptSentence(Dataset):
             return_tensors="pt",
             return_token_type_ids=True,
         )
-
-        # encoded_dict["labels"] = batch["labels"]
 
         return encoded_dict
 
