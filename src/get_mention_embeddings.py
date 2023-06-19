@@ -158,17 +158,25 @@ class DatasetConceptSentence(Dataset):
         no_match_was_found = srch_output is None
 
         if no_match_was_found:
-            return -1
+            print(flush=True)
+            print(f"******* concept_not_found ******", flush=True)
+            print(f"concept : {search_string}", flush=True)
+            print(f"sentence : {input_string}", flush=True)
+            raise Exception("Concept is not in the Sentence")
         else:
+            # print(flush=True)
+            # print(f"concept_found", flush=True)
+            # print(f"concept : {search_string}", flush=True)
+            # print(f"sentence : {input_string}", flush=True)
             start_idx = srch_output.start()
             end_idx = srch_output.end()
 
             mask_sent = (
                 input_string[:start_idx] + self.mask_token + input_string[end_idx:]
             )
-            print(f"mask_sent : {mask_sent}", flush=True)
+            print(f"con, mask_sent : {search_string} - {mask_sent}", flush=True)
 
-            return True
+            return mask_sent
 
     def get_sent_ids(self, batch):
         sents = [
