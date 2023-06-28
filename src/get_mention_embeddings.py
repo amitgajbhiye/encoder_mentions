@@ -1,4 +1,3 @@
-import gc
 import logging
 import os
 import pickle
@@ -14,8 +13,8 @@ from argparse import ArgumentParser
 import pandas as pd
 import torch
 import torch.nn as nn
-from pytorch_metric_learning import losses, miners
-from pytorch_metric_learning.samplers import MPerClassSampler
+
+
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm, trange
 from transformers import (
@@ -27,6 +26,7 @@ from transformers import (
     RobertaModel,
     RobertaTokenizer,
 )
+from transformers import AutoTokenizer
 
 
 from je_utils import read_config, set_seed
@@ -119,13 +119,16 @@ class DatasetConceptSentence(Dataset):
         log.info(self.data_df.head(n=100))
 
         self.hf_tokenizer_name = dataset_params["hf_tokenizer_name"]
-        self.hf_tokenizer_path = dataset_params["hf_tokenizer_path"]
+        self.hf_tokenizer_path = dataset_params.get("hf_tokenizer_path")
 
         _, _, tokenizer_class, _ = CLASSES[self.hf_tokenizer_name]
 
         log.info(f"tokenizer_class : {tokenizer_class}")
 
-        self.tokenizer = tokenizer_class.from_pretrained(self.hf_tokenizer_path)
+        if self.hf_tokenizer_path:
+            self.tokenizer = tokenizer_class.from_pretrained(self.hf_tokenizer_path)
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.hf_tokenizer_name)
 
         self.max_len = dataset_params["max_len"]
 
@@ -202,7 +205,8 @@ class ModelMentionEncoder(nn.Module):
         super(ModelMentionEncoder, self).__init__()
 
         self.hf_checkpoint_name = model_params["hf_checkpoint_name"]
-        self.hf_model_path = model_params["hf_model_path"]
+
+        self.hf_model_path = model_params.get("hf_model_path")
 
         _, model_class, _, self.mask_token_id = CLASSES[self.hf_checkpoint_name]
 
@@ -212,10 +216,10 @@ class ModelMentionEncoder(nn.Module):
             self.hf_model_path, output_hidden_states=True
         )
 
-        self.miner = miners.MultiSimilarityMiner()
-        self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
+        # self.miner = miners.MultiSimilarityMiner()
+        # self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
 
-        self.use_hard_pair = model_params["use_hard_pair"]
+        # self.use_hard_pair = model_params["use_hard_pair"]
 
     def forward(
         self,
@@ -252,22 +256,6 @@ class ModelMentionEncoder(nn.Module):
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
         print(f"mask_vectors :{mask_vectors.shape}", flush=True)
 
-        # emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
-        # print(f"emb_all :{emb_all.shape}", flush=True)
-
-        # if labels is None:
-        #     labels = torch.arange(mask_vectors.size(0))
-        # labels = torch.cat([labels, labels], dim=0)
-        # print(f"labels :{labels.shape}: {labels}", flush=True, end="\n")
-
-        # if self.use_hard_pair:
-        #     hard_pairs = self.miner(emb_all, labels)
-        #     loss = self.loss_fn(emb_all, labels, hard_pairs)
-        # else:
-        #     loss = self.loss_fn(emb_all, labels)
-
-        # return loss, mask_vectors
-
         return mask_vectors
 
 
@@ -281,79 +269,25 @@ def prepare_data_and_models(config):
     load_pretrained = training_params["load_pretrained"]
     pretrained_model_path = training_params["pretrained_model_path"]
 
-    # lr = training_params["lr"]
-    # weight_decay = training_params["weight_decay"]
-    # max_epochs = training_params["max_epochs"]
     batch_size = training_params["batch_size"]
 
-    # train_file = dataset_params["train_file_path"]
-    # valid_file = dataset_params["val_file_path"]
-    test_file = dataset_params["test_file_path"]
+    word_sent_file = dataset_params["word_sent_file"]
 
     num_workers = 4
 
-    # if train_file is not None:
-    #     train_dataset = DatasetConceptSentence(train_file, dataset_params)
-    #     train_sampler = MPerClassSampler(
-    #         train_dataset.data_df["labels"],
-    #         m=1,
-    #         batch_size=batch_size,
-    #         length_before_new_iter=len(train_dataset.data_df["labels"]),
-    #     )
+    assert word_sent_file is not None, "please specify input file"
 
-    #     train_dataloader = DataLoader(
-    #         train_dataset,
-    #         batch_size=batch_size,
-    #         sampler=train_sampler,
-    #         collate_fn=None,
-    #         num_workers=num_workers,
-    #         pin_memory=True,
-    #     )
+    con_sent_dataset = DatasetConceptSentence(word_sent_file, dataset_params)
+    con_sent_sampler = SequentialSampler(con_sent_dataset)
 
-    #     log.info(f"Train Data DF shape : {train_dataset.data_df.shape}")
-    # else:
-    #     log.info(f"Train File is Empty.")
-    #     train_dataset = None
-    #     train_dataloader = None
-
-    # if valid_file is not None:
-    #     val_dataset = DatasetConceptSentence(valid_file, dataset_params)
-    #     val_sampler = MPerClassSampler(
-    #         val_dataset.data_df["labels"],
-    #         m=1,
-    #         batch_size=batch_size,
-    #         length_before_new_iter=len(val_dataset.data_df["labels"]),
-    #     )
-    #     val_dataloader = DataLoader(
-    #         val_dataset,
-    #         batch_size=batch_size,
-    #         sampler=val_sampler,
-    #         collate_fn=None,
-    #         num_workers=num_workers,
-    #         pin_memory=True,
-    #         drop_last=False,
-    #     )
-    #     log.info(f"Valid Data DF shape : {val_dataset.data_df.shape}")
-    # else:
-    #     log.info(f"Validation File is Empty.")
-    #     val_dataset = None
-    #     val_dataloader = None
-
-    if test_file is not None:
-        con_sent_dataset = DatasetConceptSentence(test_file, dataset_params)
-        con_sent_sampler = SequentialSampler(con_sent_dataset)
-
-        con_sent_dataloader = DataLoader(
-            con_sent_dataset,
-            batch_size=batch_size,
-            sampler=con_sent_sampler,
-            collate_fn=None,
-            num_workers=num_workers,
-            pin_memory=True,
-        )
-    else:
-        con_sent_dataset = None
-        con_sent_dataloader = None
+    con_sent_dataloader = DataLoader(
+        con_sent_dataset,
+        batch_size=batch_size,
+        sampler=con_sent_sampler,
+        collate_fn=None,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
 
     log.info(f"Load Pretrained : {load_pretrained}")
     log.info(f"Pretrained Model Path : {pretrained_model_path}")
@@ -377,34 +311,6 @@ def prepare_data_and_models(config):
     #     model.to(device=device)
 
     log.info(f"model_class : {model.__class__.__name__}")
-
-    # if train_file:
-    #     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-    #     if training_params["lr_schedule"] == "linear":
-    #         scheduler = get_linear_schedule_with_warmup(
-    #             optimizer,
-    #             len(train_dataloader) * 2,
-    #             int(len(train_dataloader) * max_epochs),
-    #         )
-    #     else:
-    #         scheduler = get_cosine_schedule_with_warmup(
-    #             optimizer,
-    #             len(train_dataloader) * 2,
-    #             int(len(train_dataloader) * max_epochs),
-    #             num_cycles=1.5,
-    #         )
-
-    # return {
-    #     "model": model,
-    #     "scheduler": scheduler,
-    #     "optimizer": scheduler,
-    #     "train_dataset": train_dataset,
-    #     "train_dataloader": train_dataloader,
-    #     "val_dataset": val_dataset,
-    #     "val_dataloader": val_dataloader,
-    #     "con_sent_dataset": con_sent_dataset,
-    #     "con_sent_dataloader": con_sent_dataloader,
-    # }
 
     return {
         "model": model,
