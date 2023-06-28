@@ -303,13 +303,6 @@ def prepare_data_and_models(config):
 
         log.info(f"Loaded Pretrained Model")
 
-    # if torch.cuda.is_available():
-    #     n_gpu = torch.cuda.device_count()
-    #     if n_gpu > 1:
-    #         logging.info(f"using multiple GPUs: {n_gpu}")
-    #         model = nn.DataParallel(model)
-    #     model.to(device=device)
-
     log.info(f"model_class : {model.__class__.__name__}")
 
     return {
@@ -331,6 +324,7 @@ def run_model(config, param_dict):
     con_sent_embed = []
     model.eval()
     for step, batch in enumerate(tqdm(con_sent_dataloader, desc="Iter")):
+        log.info(f"Processing batch {step+1} / {len(con_sent_dataloader)}")
         print(f"concept : {batch['concept']}", flush=True)
         print(f"sents : {batch['sent']}", flush=True)
 
@@ -343,10 +337,10 @@ def run_model(config, param_dict):
         mask_vectors = outputs
         mask_vectors = mask_vectors.cpu().numpy()
 
-        print(f"*************************************")
-        print(f"mask_vectors.shape : {mask_vectors.shape}")
-        print(f"mask_vectors : {mask_vectors}")
-        print(f"*************************************")
+        # print(f"*************************************")
+        # print(f"mask_vectors.shape : {mask_vectors.shape}")
+        # print(f"mask_vectors : {mask_vectors}")
+        # print(f"*************************************")
 
         for con, sent, embed in zip(batch["concept"], batch["sent"], mask_vectors):
             con_sent_embed.append((con, sent, embed))
