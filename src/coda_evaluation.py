@@ -195,11 +195,9 @@ for dataset in datasets:
                 print(f"cand_no: {cand_no}", flush=True)
 
                 context = candidate["contexts"][0].replace(
-                    candidate["words_in_contexts"][0], BertTokenizer.mask_token
+                    candidate["words_in_contexts"][0], tokenizer.mask_token
                 )
-                definition = (
-                    BertTokenizer.mask_token + ":" + " " + candidate["definition"]
-                )
+                definition = tokenizer.mask_token + ":" + " " + candidate["definition"]
 
                 contexts.append(context)
                 definitions.append(definition)
