@@ -39,21 +39,18 @@ def load_mention_encoder_and_tokenizer(config_file_path):
     load_pretrained = training_params["load_pretrained"]
     pretrained_model_path = training_params["pretrained_model_path"]
 
-    log.info(f"Load Pretrained : {load_pretrained}")
-    log.info(f"Pretrained Model Path : {pretrained_model_path}")
+    logger.info(f"Load Pretrained : {load_pretrained}")
+    logger.info(f"Pretrained Model Path : {pretrained_model_path}")
 
     # Creating Model
     model = nn.DataParallel(ModelMentionEncoder(model_params=model_params))
     model.to(device=device)
 
     if load_pretrained:
-        log.info(f"load_pretrained is : {load_pretrained}")
-        log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
+        logger.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
         model.load_state_dict(torch.load(pretrained_model_path))
 
-        log.info(f"Loaded Pretrained Model")
-
-    log.info(f"model_class : {model.__class__.__name__}")
+    logger.info(f"model_class : {model.__class__.__name__}")
 
     tokenizer = BertTokenizer.from_pretrained(dataset_params["hf_tokenizer_path"])
 
