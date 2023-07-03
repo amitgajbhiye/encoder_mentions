@@ -144,43 +144,6 @@ class DatasetConceptSentence(Dataset):
 
         return {"concept": concept, "sent": sent}
 
-    ############## Old ##############
-    # def mask_word_in_sent(self, con, sent):
-    #     srch = re.search(con, sent, re.IGNORECASE)
-    #     mask_sent = sent.replace(sent[srch.start() : srch.end()], self.mask_token, 1)
-
-    #     return mask_sent
-    ############## Old ##############
-
-    # def mask_word_in_sent(self, search_string, input_string):
-    #     # Create a raw string with word boundaries from the user's input_string
-    #     raw_search_string = r"\b" + search_string + r"\b"
-
-    #     srch_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
-
-    #     no_match_was_found = srch_output is None
-
-    #     if no_match_was_found:
-    #         print(flush=True)
-    #         print(f"******* concept_not_found ******", flush=True)
-    #         print(f"concept : {search_string}", flush=True)
-    #         print(f"sentence : {input_string}", flush=True)
-    #         raise Exception("Concept is not in the Sentence")
-    #     else:
-    #         # print(flush=True)
-    #         # print(f"concept_found", flush=True)
-    #         # print(f"concept : {search_string}", flush=True)
-    #         # print(f"sentence : {input_string}", flush=True)
-    #         start_idx = srch_output.start()
-    #         end_idx = srch_output.end()
-
-    #         mask_sent = (
-    #             input_string[:start_idx] + self.mask_token + input_string[end_idx:]
-    #         )
-    #         print(f"con, mask_sent : {search_string} - {mask_sent}", flush=True)
-
-    #         return mask_sent
-
     def get_sent_ids(self, batch):
         cons = batch["concept"]
         sents = batch["sent"]
@@ -211,14 +174,13 @@ class DatasetConceptSentence(Dataset):
             return_token_type_ids=True,
         )
 
-        # encoded_dict["labels"] = batch["labels"]
-
         return encoded_dict
 
 
-class ModelMentionEncoder(nn.Module):
+class ModelDefinitionEncoder(nn.Module):
+    # class ModelMentionEncoder(nn.Module):
     def __init__(self, model_params):
-        super(ModelMentionEncoder, self).__init__()
+        super(ModelDefinitionEncoder, self).__init__()
 
         self.hf_checkpoint_name = model_params["hf_checkpoint_name"]
 
@@ -309,7 +271,7 @@ def prepare_data_and_models(config):
     log.info(f"Pretrained Model Path : {pretrained_model_path}")
 
     # Creating Model
-    model = nn.DataParallel(ModelMentionEncoder(model_params=model_params))
+    model = nn.DataParallel(ModelDefinitionEncoder(model_params=model_params))
     model.to(device=device)
 
     if load_pretrained:

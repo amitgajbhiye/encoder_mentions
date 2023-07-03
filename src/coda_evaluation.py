@@ -15,7 +15,10 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity as cosine
 
 import log
-from get_mention_embeddings import ModelMentionEncoder
+
+from get_mention_embeddings import ModelMentionEncoder as mention_encoder
+from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
+
 from transformers import BertTokenizer
 from je_utils import read_config, set_seed
 
@@ -42,11 +45,11 @@ def load_models_and_tokenizer(config_file_path):
     ]
 
     # Creating Mention Model
-    men_model = nn.DataParallel(ModelMentionEncoder(model_params=model_params))
+    men_model = nn.DataParallel(mention_encoder(model_params=model_params))
     men_model.to(device=device)
 
     # Creating Definition Model
-    def_model = nn.DataParallel(ModelMentionEncoder(model_params=model_params))
+    def_model = nn.DataParallel(definition_encoder(model_params=model_params))
     def_model.to(device=device)
 
     men_model.load_state_dict(torch.load(pretrained_mention_model_path))
@@ -79,12 +82,9 @@ def get_mention_embeds(mention_enc, tokenizer, context_sents):
     ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
 
     with torch.no_grad():
-        outputs = mention_enc(pretrained_con_embeds=None, **ids_dict)
+        mention_vectors = mention_enc(pretrained_con_embeds=None, **ids_dict)
 
-    mask_vectors = outputs
-    mask_vectors = mask_vectors.cpu().numpy()
-
-    return mask_vectors
+    return mention_vectors.cpu().numpy()
 
 
 def get_definition_embeds(definition_enc, tokenizer, definition_sents):
@@ -103,12 +103,9 @@ def get_definition_embeds(definition_enc, tokenizer, definition_sents):
     ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
 
     with torch.no_grad():
-        outputs = definition_enc(pretrained_con_embeds=None, **ids_dict)
+        def_vectors = definition_enc(pretrained_con_embeds=None, **ids_dict)
 
-    mask_vectors = outputs
-    mask_vectors = mask_vectors.cpu().numpy()
-
-    return mask_vectors
+    return def_vectors.cpu().numpy()
 
 
 def get_print_result(sample_group: dict, sample_result: dict):
@@ -192,10 +189,6 @@ for dataset in datasets:
     with open(data_file, "r") as handle:
         CoDA = json.load(handle)
 
-    # print(flush=True)
-    # print(f"coda : {CoDA}", flush=True)
-    # print(flush=True)
-
     for word_type in word_types:
         logger.info(
             f"Evaluating {sentence_model} on {dataset.split('.')[0]}_{word_type}"
@@ -231,6 +224,7 @@ for dataset in datasets:
                 contexts.append(context)
                 definitions.append(definition)
 
+                print(f"word: {candidate['words_in_contexts'][0]}")
                 print(f"context : {context}", flush=True)
                 print(f"definition : {definition}", flush=True)
 
