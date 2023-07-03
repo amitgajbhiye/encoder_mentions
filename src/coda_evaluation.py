@@ -213,8 +213,8 @@ for dataset in datasets:
             definitions = []
             for cand_no, candidate in enumerate(candidates):
                 print(flush=True)
-                print(f"group_no: {group_no}", flush=True)
-                print(f"cand_no: {cand_no}", flush=True)
+
+                print(f"unmasked_context: {context}", flush=True)
 
                 context = candidate["contexts"][0].replace(
                     candidate["words_in_contexts"][0], tokenizer.mask_token
@@ -225,8 +225,8 @@ for dataset in datasets:
                 definitions.append(definition)
 
                 print(f"word: {candidate['words_in_contexts'][0]}")
-                print(f"context : {context}", flush=True)
-                print(f"definition : {definition}", flush=True)
+                print(f"masked_context: {context}", flush=True)
+                print(f"definition: {definition}", flush=True)
 
             print(f"contexts : {contexts}", flush=True)
             print(f"definitions : {definitions}", flush=True)
