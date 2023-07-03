@@ -176,10 +176,10 @@ mention_enc, def_enc, tokenizer = load_models_and_tokenizer(
 
 
 datasets = [
-    # "CoDA-clean-easy.json",
+    "CoDA-clean-easy.json",
     "CoDA-clean-hard.json",
-    # "CoDA-noisy-easy.json",
-    # "CoDA-noisy-hard.json",
+    "CoDA-noisy-easy.json",
+    "CoDA-noisy-hard.json",
 ]
 word_types = ["n", "v"]
 
