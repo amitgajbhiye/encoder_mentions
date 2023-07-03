@@ -54,7 +54,7 @@ def load_mention_encoder_and_tokenizer(config_file_path):
 
     tokenizer = BertTokenizer.from_pretrained(dataset_params["hf_tokenizer_path"])
 
-    return {"model": model, "tokenizer": tokenizer}
+    return model, tokenizer
 
 
 def get_mention_embeds(mention_enc, tokenizer, context_sents):
