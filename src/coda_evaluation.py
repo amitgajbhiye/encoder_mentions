@@ -245,7 +245,9 @@ for dataset in datasets:
             )
 
             definition_embs = get_definition_embeds(
-                definition_enc=def_enc, tokenizer=tokenizer, context_sents=definitions
+                definition_enc=def_enc,
+                tokenizer=tokenizer,
+                definition_sents=definitions,
             )
 
             print(flush=True)
