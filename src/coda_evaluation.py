@@ -27,7 +27,7 @@ logger.propagate = False
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
-def load_mention_encoder_and_tokenizer(config_file_path):
+def load_models_and_tokenizer(config_file_path):
     config = read_config(config_file_path)
 
     ############
@@ -36,25 +36,31 @@ def load_mention_encoder_and_tokenizer(config_file_path):
     model_params = config["model_params"]
     ############
 
-    load_pretrained = training_params["load_pretrained"]
-    pretrained_model_path = training_params["pretrained_model_path"]
+    pretrained_mention_model_path = training_params["pretrained_mention_model_path"]
+    pretrained_definition_model_path = training_params[
+        "pretrained_definition_model_path"
+    ]
 
-    logger.info(f"Load Pretrained : {load_pretrained}")
-    logger.info(f"Pretrained Model Path : {pretrained_model_path}")
+    # Creating Mention Model
+    men_model = nn.DataParallel(ModelMentionEncoder(model_params=model_params))
+    men_model.to(device=device)
 
-    # Creating Model
-    model = nn.DataParallel(ModelMentionEncoder(model_params=model_params))
-    model.to(device=device)
+    # Creating Definition Model
+    def_model = nn.DataParallel(ModelMentionEncoder(model_params=model_params))
+    def_model.to(device=device)
 
-    if load_pretrained:
-        logger.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
-        model.load_state_dict(torch.load(pretrained_model_path))
+    men_model.load_state_dict(torch.load(pretrained_mention_model_path))
+    def_model.load_state_dict(torch.load(pretrained_definition_model_path))
 
-    logger.info(f"model_class : {model.__class__.__name__}")
+    print(f"Mention Model is loaded from : {pretrained_mention_model_path}", flush=True)
+    print(
+        f"Definition Model is loaded from : {pretrained_definition_model_path}",
+        flush=True,
+    )
 
     tokenizer = BertTokenizer.from_pretrained(dataset_params["hf_tokenizer_path"])
 
-    return model, tokenizer
+    return men_model, def_model, tokenizer
 
 
 def get_mention_embeds(mention_enc, tokenizer, context_sents):
@@ -74,6 +80,30 @@ def get_mention_embeds(mention_enc, tokenizer, context_sents):
 
     with torch.no_grad():
         outputs = mention_enc(pretrained_con_embeds=None, **ids_dict)
+
+    mask_vectors = outputs
+    mask_vectors = mask_vectors.cpu().numpy()
+
+    return mask_vectors
+
+
+def get_definition_embeds(definition_enc, tokenizer, definition_sents):
+    max_len = 120
+
+    ids_dict = tokenizer.batch_encode_plus(
+        batch_text_or_text_pairs=definition_sents,
+        max_length=max_len,
+        add_special_tokens=True,
+        padding="max_length",
+        truncation=True,
+        return_tensors="pt",
+        return_token_type_ids=True,
+    )
+
+    ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
+
+    with torch.no_grad():
+        outputs = definition_enc(pretrained_con_embeds=None, **ids_dict)
 
     mask_vectors = outputs
     mask_vectors = mask_vectors.cpu().numpy()
@@ -133,20 +163,19 @@ random.seed(42)
 # sentence_model = "all-mpnet-base-v2"
 # sentence_model = "all-MiniLM-L6-v2"
 
+# emb_model = SentenceTransformer(sentence_model, device=f"cuda:{gpu_id}")
+
 sentence_model = "bert_large_uncased"
 
 data_folder = "data/coda21"
 output_folder = f"output/{sentence_model}"
 os.makedirs(output_folder, exist_ok=True)
 
-mention_enc_config_file = "configs/coda21/coda21.json"
+config_file = "configs/coda21/coda21.json"
 
-mention_enc, tokenizer = load_mention_encoder_and_tokenizer(
-    config_file_path=mention_enc_config_file
+mention_enc, def_enc, tokenizer = load_models_and_tokenizer(
+    config_file_path=config_file
 )
-
-
-# emb_model = SentenceTransformer(sentence_model, device=f"cuda:{gpu_id}")
 
 
 datasets = [
@@ -215,8 +244,8 @@ for dataset in datasets:
                 mention_enc=mention_enc, tokenizer=tokenizer, context_sents=contexts
             )
 
-            definition_embs = get_mention_embeds(
-                mention_enc=mention_enc, tokenizer=tokenizer, context_sents=definitions
+            definition_embs = get_definition_embeds(
+                definition_enc=def_enc, tokenizer=tokenizer, context_sents=definitions
             )
 
             print(flush=True)
