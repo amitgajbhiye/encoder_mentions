@@ -12,6 +12,7 @@ from sklearn.metrics import (
     confusion_matrix,
     f1_score,
 )
+from sklearn.metrics import precision_recall_fscore_support
 
 
 def set_seed(seed):
@@ -37,12 +38,19 @@ def compute_scores(labels, preds):
         preds
     ), f"labels len: {len(labels)} is not equal to preds len {len(preds)}"
 
+    precision, r, f1, _ = precision_recall_fscore_support(
+        y_true=labels, y_pred=preds, average="binary"
+    )
+
     scores = {
+        "accuracy": round(accuracy_score(labels, preds), 4),
+        "precision": precision,
+        "recall": r,
+        "f1": f1,
         "binary_f1": round(f1_score(labels, preds, average="binary"), 4),
         "micro_f1": round(f1_score(labels, preds, average="micro"), 4),
         "macro_f1": round(f1_score(labels, preds, average="macro"), 4),
         "weighted_f1": round(f1_score(labels, preds, average="weighted"), 4),
-        "accuracy": round(accuracy_score(labels, preds), 4),
         "classification report": classification_report(labels, preds, labels=[0, 1]),
         "confusion matrix": confusion_matrix(labels, preds, labels=[0, 1]),
     }
