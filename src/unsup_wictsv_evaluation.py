@@ -4,6 +4,8 @@ import csv
 import numpy as np
 from scipy.spatial import distance
 
+import pickle
+
 from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
 
@@ -116,15 +118,15 @@ class UnsupervisedWicTsv(nn.Module):
             )
             cosine_distances.append(cosine_distance)
 
-        predictions = torch.round(torch.sigmoid(torch.tensor(cosine_distances)))
+        # predictions = torch.round(torch.sigmoid(torch.tensor(cosine_distances)))
 
         # print(f"dot_product_logits.shape : {dot_product_logits.shape}", flush=True)
         # print(f"predictions.shape : {predictions.shape}", flush=True)
 
         print(f"cosine_distances : {cosine_distances}", flush=True)
-        print(f"predictions : {predictions}", flush=True)
+        # print(f"predictions : {predictions}", flush=True)
 
-        return cosine_distance, predictions
+        return cosine_distance
 
 
 def _read_tsv(input_file, quotechar=None):
@@ -198,25 +200,29 @@ if __name__ == "__main__":
             definitions
         ), "In batch context_sents len not equal to definitions."
 
-        logits, preds = un_wictsv(
+        cosine_distance = un_wictsv(
             context_sents=context_sents, definition_sents=definitions
         )
 
-        print(f"logits : {logits.cpu().numpy().flatten()}", flush=True)
-        print(f"preds : {preds.cpu().numpy().flatten()}", flush=True)
+        all_preds.extend(cosine_distance)
 
-        all_preds.extend(preds.cpu().numpy().flatten())
+    print(f"all_preds: {all_preds}", flush=True)
+    print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
-    all_preds = np.array(all_preds, dtype=int)
+    with open(
+        "trained_models/wictsv_dev_cos_dist/wictsv_developmentset_cosine_distances.pickle",
+        "wb",
+    ) as pkl_file:
+        pickle.dump(all_preds, pkl_file)
 
-    labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
-    labels = np.array([1 if label == "T" else 0 for label in labels], dtype=int)
+    # labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
+    # labels = np.array([1 if label == "T" else 0 for label in labels], dtype=int)
 
-    print(f"labels : {labels}", flush=True)
-    print(f"all_preds : {all_preds}", flush=True)
+    # print(f"labels : {labels}", flush=True)
+    # print(f"all_preds : {all_preds}", flush=True)
 
-    scores = compute_scores(labels=labels, preds=all_preds)
+    # scores = compute_scores(labels=labels, preds=all_preds)
 
-    print(flush=True)
-    for key, value in scores.items():
-        print(key, ":", value, flush=True)
+    # print(flush=True)
+    # for key, value in scores.items():
+    #     print(key, ":", value, flush=True)
