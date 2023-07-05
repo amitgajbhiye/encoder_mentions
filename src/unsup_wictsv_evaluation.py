@@ -116,7 +116,7 @@ class UnsupervisedWicTsv(nn.Module):
             cosine_distance = distance.cosine(
                 men_emb.cpu().numpy(), def_emb.cpu().numpy()
             )
-            cosine_distances.append(cosine_distance)
+            cosine_distances.extend(cosine_distance)
 
         # predictions = torch.round(torch.sigmoid(torch.tensor(cosine_distances)))
 
@@ -126,7 +126,7 @@ class UnsupervisedWicTsv(nn.Module):
         print(f"cosine_distances : {cosine_distances}", flush=True)
         # print(f"predictions : {predictions}", flush=True)
 
-        return cosine_distances.flatten()
+        return cosine_distances
 
 
 def _read_tsv(input_file, quotechar=None):
