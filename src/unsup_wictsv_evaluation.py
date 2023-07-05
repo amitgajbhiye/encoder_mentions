@@ -192,9 +192,10 @@ if __name__ == "__main__":
         print(f"logits : {logits}", flush=True)
         print(f"preds : {preds}", flush=True)
 
-        all_preds.extend(preds)
+        all_preds.extend(preds.cpu().numpy())
 
-    all_preds = all_preds.cpu().numpy().flatten().astype(int)
+    # all_preds = all_preds.cpu().numpy().flatten().astype(int)
+    all_preds = np.array(all_preds, dtype=int)
 
     labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
     labels = np.array([1 if label == "T" else 0 for label in labels], dtype=int)
