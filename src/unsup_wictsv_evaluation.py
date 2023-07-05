@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import csv
 import numpy as np
-from torch.nn.functional import normalize
+from scipy.spatial import distance
 
 from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
@@ -98,24 +98,26 @@ class UnsupervisedWicTsv(nn.Module):
             definition_sents=definition_sents
         )
 
-        mention_embeds = normalize(mention_embeds, p=2, dim=1)
-        definition_embeds = normalize(definition_embeds, p=2, dim=1)
-
         print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
         print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
 
-        dot_product_logits = (
-            (mention_embeds * definition_embeds)  # Elementwise product
-            .sum(-1)
-            .reshape(mention_embeds.shape[0], 1)
+        # dot_product_logits = (
+        #     (mention_embeds * definition_embeds)  # Elementwise product
+        #     .sum(-1)
+        #     .reshape(mention_embeds.shape[0], 1)
+        # )
+
+        # predictions = torch.round(torch.sigmoid(dot_product_logits))
+
+        cosine_distance = distance.cosine(
+            mention_embeds.cpu().numpy(), definition_embeds.cpu().numpy()
         )
+        predictions = torch.round(torch.sigmoid(cosine_distance))
 
-        predictions = torch.round(torch.sigmoid(dot_product_logits))
+        # print(f"dot_product_logits.shape : {dot_product_logits.shape}", flush=True)
+        # print(f"predictions.shape : {predictions.shape}", flush=True)
 
-        print(f"dot_product_logits.shape : {dot_product_logits.shape}", flush=True)
-        print(f"predictions.shape : {predictions.shape}", flush=True)
-
-        return dot_product_logits, predictions
+        return cosine_distance, predictions
 
 
 def _read_tsv(input_file, quotechar=None):
