@@ -109,13 +109,20 @@ class UnsupervisedWicTsv(nn.Module):
 
         # predictions = torch.round(torch.sigmoid(dot_product_logits))
 
-        cosine_distance = distance.cosine(
-            mention_embeds.cpu().numpy(), definition_embeds.cpu().numpy()
-        )
-        predictions = torch.round(torch.sigmoid(cosine_distance))
+        cosine_distances = []
+        for men_emb, def_emb in zip(mention_embeds, definition_embeds):
+            cosine_distance = distance.cosine(
+                men_emb.cpu().numpy(), def_emb.cpu().numpy()
+            )
+            cosine_distances.append(cosine_distance)
+
+        predictions = torch.round(torch.sigmoid(torch.tensor(cosine_distances)))
 
         # print(f"dot_product_logits.shape : {dot_product_logits.shape}", flush=True)
         # print(f"predictions.shape : {predictions.shape}", flush=True)
+
+        print(f"cosine_distances : {cosine_distances}", flush=True)
+        print(f"predictions : {predictions}", flush=True)
 
         return cosine_distance, predictions
 
