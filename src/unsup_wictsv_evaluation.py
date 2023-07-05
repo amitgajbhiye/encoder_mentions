@@ -206,7 +206,6 @@ if __name__ == "__main__":
 
         all_preds.extend(list(cosine_distance))
 
-    print(f"all_preds: {all_preds}", flush=True)
     print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
     with open(
