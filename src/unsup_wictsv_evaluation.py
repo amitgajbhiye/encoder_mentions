@@ -1,12 +1,13 @@
 import torch
 import torch.nn as nn
 import csv
+import numpy as np
 
 from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
 
 from transformers import BertTokenizer
-from je_utils import read_config, set_seed
+from je_utils import read_config, set_seed, compute_scores
 from argparse import ArgumentParser
 
 
@@ -153,25 +154,29 @@ if __name__ == "__main__":
 
     un_wictsv = UnsupervisedWicTsv(config=config)
 
+    all_preds = []
     for batch_no, i in enumerate(range(0, len(data), batch_size)):
         print(flush=True)
         print(
             f"Processing Batch : {batch_no} / {len(data)//batch_size + 1}", flush=True
         )
 
+        words = []
         context_sents = []
         definitions = []
 
         batch = data[i : i + batch_size]
 
         for word, _, context, definition, _, _ in batch:
+            words.append(word)
             context_sents.append(
-                context.lower().replace(word, un_wictsv.tokenizer.mask_token)
+                context.lower().replace(word.lower(), un_wictsv.tokenizer.mask_token)
             )
             definitions.append(
                 un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
             )
 
+        print(f"words : {words}", flush=True)
         print(f"***context_sents : {len(context_sents)}, {context_sents}", flush=True)
         print(flush=True)
         print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
@@ -186,3 +191,19 @@ if __name__ == "__main__":
 
         print(f"logits : {logits}", flush=True)
         print(f"preds : {preds}", flush=True)
+
+        all_preds.extend(preds)
+
+    all_preds = all_preds.cpu().numpy().flatten().astype(int)
+
+    labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
+    labels = np.array([1 if label == "T" else 0 for label in labels], dtype=int)
+
+    print(f"labels : {labels}", flush=True)
+    print(f"all_preds : {all_preds}", flush=True)
+
+    scores = compute_scores(labels=labels, preds=all_preds)
+
+    print(flush=True)
+    for key, value in scores.items():
+        print(key, ":", value, flush=True)
