@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import csv
 import numpy as np
+from torch.nn.functional import normalize
 
 from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
@@ -97,6 +98,9 @@ class UnsupervisedWicTsv(nn.Module):
             definition_sents=definition_sents
         )
 
+        mention_embeds = normalize(mention_embeds, p=2, dim=1)
+        definition_embeds = normalize(definition_embeds, p=2, dim=1)
+
         print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
         print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
 
@@ -189,12 +193,11 @@ if __name__ == "__main__":
             context_sents=context_sents, definition_sents=definitions
         )
 
-        print(f"logits : {logits}", flush=True)
-        print(f"preds : {preds}", flush=True)
+        print(f"logits : {logits.cpu().numpy().flatten()}", flush=True)
+        print(f"preds : {preds.cpu().numpy().flatten()}", flush=True)
 
-        all_preds.extend(preds.cpu().numpy())
+        all_preds.extend(preds.cpu().numpy().flatten())
 
-    # all_preds = all_preds.cpu().numpy().flatten().astype(int)
     all_preds = np.array(all_preds, dtype=int)
 
     labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
