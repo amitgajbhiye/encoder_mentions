@@ -126,7 +126,7 @@ class UnsupervisedWicTsv(nn.Module):
         print(f"cosine_distances : {cosine_distances}", flush=True)
         # print(f"predictions : {predictions}", flush=True)
 
-        return cosine_distance.flatten()
+        return cosine_distances.flatten()
 
 
 def _read_tsv(input_file, quotechar=None):
