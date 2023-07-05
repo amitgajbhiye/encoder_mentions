@@ -168,12 +168,12 @@ if __name__ == "__main__":
             context_sents.append(context.replace(word, un_wictsv.tokenizer.mask_token))
             definitions.append(un_wictsv.tokenizer.mask_token + ":" + " " + definition)
 
-            print(f"context_sents : {context_sents}", flush=True)
-            print(f"definitions : {definitions}", flush=True)
+        print(f"context_sents : {context_sents}", flush=True)
+        print(f"definitions : {definitions}", flush=True)
 
-            logits, preds = un_wictsv(
-                context_sents=context_sents, definition_sents=definitions
-            )
+        logits, preds = un_wictsv(
+            context_sents=context_sents, definition_sents=definitions
+        )
 
-            print(f"logits : {logits}", flush=True)
-            print(f"preds : {preds}", flush=True)
+        print(f"logits : {logits}", flush=True)
+        print(f"preds : {preds}", flush=True)
