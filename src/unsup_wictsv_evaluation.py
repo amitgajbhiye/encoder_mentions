@@ -165,11 +165,20 @@ if __name__ == "__main__":
         batch = data[i : i + batch_size]
 
         for word, _, context, definition, _, _ in batch:
-            context_sents.append(context.replace(word, un_wictsv.tokenizer.mask_token))
-            definitions.append(un_wictsv.tokenizer.mask_token + ":" + " " + definition)
+            context_sents.append(
+                context.lower().replace(word, un_wictsv.tokenizer.mask_token)
+            )
+            definitions.append(
+                un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
+            )
 
-        print(f"context_sents : {context_sents}", flush=True)
-        print(f"definitions : {definitions}", flush=True)
+        print(f"***context_sents : {len(context_sents)}, {context_sents}", flush=True)
+        print(flush=True)
+        print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
+
+        assert len(context_sents) == len(
+            definitions
+        ), "In batch context_sents len not equal to definitions."
 
         logits, preds = un_wictsv(
             context_sents=context_sents, definition_sents=definitions
