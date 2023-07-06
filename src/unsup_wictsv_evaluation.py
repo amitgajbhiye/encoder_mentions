@@ -172,6 +172,8 @@ if __name__ == "__main__":
     )
     data_df["label"] = label
 
+    print(f"data_df : {data}", flush=True)
+
     test_domain = inference_params["test_domain"]
 
     if test_domain:
@@ -180,7 +182,7 @@ if __name__ == "__main__":
         # '2': 216, - CTL
         # '3': 168, - CPS
         print(f"Testing on Domain : {test_domain}")
-        data_df = data_df[data_df["domain"] == test_domain]
+        data_df = data_df[data_df["domain"] == int(test_domain)]
     else:
         print(f"Testing on All Domains")
 
