@@ -103,17 +103,10 @@ class UnsupervisedWicTsv(nn.Module):
         print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
         print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
 
-        # dot_product_logits = (
-        #     (mention_embeds * definition_embeds)  # Elementwise product
-        #     .sum(-1)
-        #     .reshape(mention_embeds.shape[0], 1)
-        # )
-
-        # predictions = torch.round(torch.sigmoid(dot_product_logits))
-
         cosine_distances = []
         for men_emb, def_emb in zip(mention_embeds, definition_embeds):
             cos_dist = distance.cosine(men_emb.cpu().numpy(), def_emb.cpu().numpy())
+            print(f"cos_dist: {type(cos_dist)}, {cos_dist}")
             # cosine_distances.extend(cos_dist)
 
         print(f"cosine_distances : {cosine_distances}", flush=True)
