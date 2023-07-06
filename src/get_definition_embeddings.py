@@ -208,14 +208,14 @@ class ModelDefinitionEncoder(nn.Module):
 
 def prepare_data_and_models(config):
     ############
-    training_params = config["training_params"]
+    inference_params = config["inference_params"]
     dataset_params = config["dataset_params"]
     model_params = config["model_params"]
     ############
 
-    load_pretrained = training_params["load_pretrained"]
-    pretrained_model_path = training_params["pretrained_model_path"]
-    batch_size = training_params["batch_size"]
+    load_pretrained = inference_params["load_pretrained"]
+    pretrained_model_path = inference_params["pretrained_model_path"]
+    batch_size = inference_params["batch_size"]
     word_sent_file = dataset_params["word_sent_file"]
     num_workers = 4
 
