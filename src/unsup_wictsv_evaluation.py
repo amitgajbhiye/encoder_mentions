@@ -183,7 +183,7 @@ if __name__ == "__main__":
         # '2': 216, - CTL
         # '3': 168, - CPS
         print(f"Testing on Domain : {test_domain}")
-        data_df = data_df[data_df["domain"] == int(test_domain)]
+        data_df = data_df[data_df["domain"] == str(test_domain)]
     else:
         print(f"Testing on All Domains")
 
