@@ -176,8 +176,8 @@ if __name__ == "__main__":
 
     if test_domain:
         # '0': 717, - WNT/WKT
-        # '2': 216, - CTL
         # '1': 205, - MSH
+        # '2': 216, - CTL
         # '3': 168, - CPS
         print(f"Testing on Domain : {test_domain}")
         data_df = data_df[data_df["domain"] == test_domain]
