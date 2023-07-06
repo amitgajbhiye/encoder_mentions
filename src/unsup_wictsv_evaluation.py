@@ -106,8 +106,8 @@ class UnsupervisedWicTsv(nn.Module):
         cosine_distances = []
         for men_emb, def_emb in zip(mention_embeds, definition_embeds):
             cos_dist = distance.cosine(men_emb.cpu().numpy(), def_emb.cpu().numpy())
-            print(f"cos_dist: {type(cos_dist)}, {cos_dist}")
-            # cosine_distances.extend(cos_dist)
+            # print(f"cos_dist: {type(cos_dist)}, {cos_dist}")
+            cosine_distances.extend(cos_dist.item())
 
         print(f"cosine_distances : {cosine_distances}", flush=True)
 
