@@ -1,7 +1,6 @@
 import logging
 import os
 import pickle
-import re
 import sys
 import time
 
@@ -13,11 +12,10 @@ from argparse import ArgumentParser
 import pandas as pd
 import torch
 import torch.nn as nn
-
-
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm, trange
+from torch.utils.data import DataLoader, Dataset, SequentialSampler
+from tqdm import tqdm
 from transformers import (
+    AutoTokenizer,
     BertForMaskedLM,
     BertModel,
     BertTokenizer,
@@ -26,11 +24,8 @@ from transformers import (
     RobertaModel,
     RobertaTokenizer,
 )
-from transformers import AutoTokenizer
-
 
 from je_utils import read_config, set_seed
-from torch.utils.data import DataLoader, Dataset, SequentialSampler
 
 warnings.filterwarnings("ignore")
 
@@ -120,7 +115,6 @@ class DatasetConceptSentence(Dataset):
 
         self.hf_tokenizer_name = dataset_params["hf_tokenizer_name"]
         self.hf_tokenizer_path = dataset_params.get("hf_tokenizer_path")
-
         _, _, tokenizer_class, _ = CLASSES[self.hf_tokenizer_name]
 
         log.info(f"tokenizer_class : {tokenizer_class}")
@@ -131,7 +125,6 @@ class DatasetConceptSentence(Dataset):
             self.tokenizer = AutoTokenizer.from_pretrained(self.hf_tokenizer_name)
 
         self.max_len = dataset_params["max_len"]
-
         self.mask_token = self.tokenizer.mask_token
         self.mask_token_id = self.tokenizer.mask_token_id
 
@@ -152,18 +145,7 @@ class DatasetConceptSentence(Dataset):
             sents
         ), f"len(cons) {len(cons)} != len(sents) {len(sents)}"
 
-        # middle_index = len(cons) // 2
-        # masked_sents_1 = [
-        #     f"a {self.mask_token} is {sent}" for sent in sents[:middle_index]
-        # ]
-        # masked_sents_2 = [f"{self.mask_token}: {sent}" for sent in sents[middle_index:]]
-        # masked_sents = masked_sents_1 + masked_sents_2
-
         masked_sents_2 = [f"{self.mask_token}: {sent}" for sent in sents]
-
-        # print(f"original_sents : {sents}", flush=True)
-        print(f"masked_sents_2: {masked_sents_2}", flush=True)
-
         encoded_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=masked_sents_2,
             max_length=self.max_len,
@@ -183,9 +165,7 @@ class ModelDefinitionEncoder(nn.Module):
         super(ModelDefinitionEncoder, self).__init__()
 
         self.hf_checkpoint_name = model_params["hf_checkpoint_name"]
-
         self.hf_model_path = model_params.get("hf_model_path")
-
         _, model_class, _, self.mask_token_id = CLASSES[self.hf_checkpoint_name]
 
         log.info(f"model_class : {model_class}")
@@ -193,11 +173,6 @@ class ModelDefinitionEncoder(nn.Module):
         self.encoder = model_class.from_pretrained(
             self.hf_model_path, output_hidden_states=True
         )
-
-        # self.miner = miners.MultiSimilarityMiner()
-        # self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
-
-        # self.use_hard_pair = model_params["use_hard_pair"]
 
     def forward(
         self,
@@ -212,17 +187,12 @@ class ModelDefinitionEncoder(nn.Module):
             token_type_ids=token_type_ids,
             attention_mask=attention_mask,
         )
-
         hidden_states = outputs.hidden_states[-1]
-        print(f"hidden_states : {hidden_states.shape}", flush=True)
 
         def get_mask_token_embeddings(last_layer_hidden_states):
             _, mask_token_index = (
                 input_ids == torch.tensor(self.mask_token_id)
             ).nonzero(as_tuple=True)
-
-            print(f"mask_token_index: {mask_token_index}", flush=True)
-
             mask_vectors = torch.vstack(
                 [
                     torch.index_select(v, 0, torch.tensor(idx))
@@ -232,7 +202,6 @@ class ModelDefinitionEncoder(nn.Module):
             return mask_vectors
 
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
-        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
 
         return mask_vectors
 
@@ -246,18 +215,14 @@ def prepare_data_and_models(config):
 
     load_pretrained = training_params["load_pretrained"]
     pretrained_model_path = training_params["pretrained_model_path"]
-
     batch_size = training_params["batch_size"]
-
     word_sent_file = dataset_params["word_sent_file"]
-
     num_workers = 4
 
     assert word_sent_file is not None, "please specify input file"
 
     con_sent_dataset = DatasetConceptSentence(word_sent_file, dataset_params)
     con_sent_sampler = SequentialSampler(con_sent_dataset)
-
     con_sent_dataloader = DataLoader(
         con_sent_dataset,
         batch_size=batch_size,
@@ -278,7 +243,6 @@ def prepare_data_and_models(config):
         log.info(f"load_pretrained is : {load_pretrained}")
         log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
         model.load_state_dict(torch.load(pretrained_model_path))
-
         log.info(f"Loaded Pretrained Model")
 
     log.info(f"model_class : {model.__class__.__name__}")
@@ -292,19 +256,17 @@ def prepare_data_and_models(config):
 
 def run_model(config, param_dict):
     model = param_dict["model"]
-
     con_sent_dataset = param_dict["con_sent_dataset"]
     con_sent_dataloader = param_dict["con_sent_dataloader"]
-
-    training_params = config["training_params"]
+    inference_params = config["inference_params"]
     dataset_params = config["dataset_params"]
-
     con_sent_embed = []
+
     model.eval()
     for step, batch in enumerate(tqdm(con_sent_dataloader, desc="Iter")):
         log.info(f"Processing batch {step+1} / {len(con_sent_dataloader)}")
-        print(f"concept : {batch['concept']}", flush=True)
-        print(f"sents : {batch['sent']}", flush=True)
+        # print(f"concept : {batch['concept']}", flush=True)
+        # print(f"sents : {batch['sent']}", flush=True)
 
         ids_dict = con_sent_dataset.get_sent_ids(batch)
         ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
@@ -315,23 +277,17 @@ def run_model(config, param_dict):
         mask_vectors = outputs
         mask_vectors = mask_vectors.cpu().numpy()
 
-        # print(f"*************************************")
-        # print(f"mask_vectors.shape : {mask_vectors.shape}")
-        # print(f"mask_vectors : {mask_vectors}")
-        # print(f"*************************************")
-
         for con, sent, embed in zip(batch["concept"], batch["sent"], mask_vectors):
             con_sent_embed.append((con, sent, embed))
 
-    save_dir = training_params["save_dir"]
+    save_dir = inference_params["save_dir"]
     dataset_name = dataset_params["dataset_name"]
-
     out_file_name = os.path.join(save_dir, f"{dataset_name}.pkl")
 
     with open(out_file_name, "wb") as pkl_file:
         pickle.dump(con_sent_embed, pkl_file, protocol=pickle.DEFAULT_PROTOCOL)
 
-    log.info(f"Embeddings are saved in : {out_file_name}")
+    log.info(f"Definition Embeddings are saved in : {out_file_name}")
     log.info("Program Finished.")
 
 
