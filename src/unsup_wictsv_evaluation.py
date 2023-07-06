@@ -153,8 +153,10 @@ if __name__ == "__main__":
     data = _read_tsv(wictsv_file)[1:]
 
     # Reading Labels
-    label = np.array(_read_tsv(inference_params["wictsv_test_file"])).flatten()
+    label = np.array(_read_tsv(inference_params["label_file"])).flatten()
     label = np.array([1 if label == "T" else 0 for label in label], dtype=int)
+
+    print(f"label : {label}")
 
     data_df = pd.DataFrame.from_records(data)
     data_df.rename(
