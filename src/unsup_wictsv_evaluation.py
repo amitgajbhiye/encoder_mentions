@@ -172,7 +172,7 @@ if __name__ == "__main__":
     )
     data_df["label"] = label
 
-    print(f"data_df : {data}", flush=True)
+    print(f"data_df : {data_df}", flush=True)
 
     test_domain = inference_params["test_domain"]
 
