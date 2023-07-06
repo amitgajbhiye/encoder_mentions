@@ -204,11 +204,11 @@ if __name__ == "__main__":
     labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
     labels = np.array([1 if label == "T" else 0 for label in labels], dtype=int)
 
-    def to_labels(pos_probs, threshold):
-        return (pos_probs >= threshold).astype("int")
+    def to_labels(probs, threshold):
+        return (probs >= threshold).astype("int")
 
     classification_thresh = 0.3
-    all_preds = to_labels(np.array(all_preds))
+    all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
     scores = compute_scores(labels=labels, preds=all_preds)
 
     print(f"labels : {len(labels)}, {labels}", flush=True)
