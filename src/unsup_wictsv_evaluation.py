@@ -176,7 +176,8 @@ if __name__ == "__main__":
                 un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
             )
 
-        print(f"words : {words}", flush=True)
+        print(f"***words : {len(words)}, {words}", flush=True)
+        print(flush=True)
         print(f"***context_sents : {len(context_sents)}, {context_sents}", flush=True)
         print(flush=True)
         print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
@@ -191,22 +192,28 @@ if __name__ == "__main__":
 
         all_preds.extend(list(cosine_distance))
 
-    print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+    # print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
-    with open(
-        "trained_models/wictsv_dev_cos_dist/wictsv_developmentset_cosine_distances.pickle",
-        "wb",
-    ) as pkl_file:
+    probs_pkl_file = (
+        "trained_models/wictsv_dev_cos_dist/wictsv_testset_cosine_distances.pickle"
+    )
+    with open(probs_pkl_file, "wb") as pkl_file:
         pickle.dump(all_preds, pkl_file)
 
-    # labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
-    # labels = np.array([1 if label == "T" else 0 for label in labels], dtype=int)
+    # Reading Labels
+    labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
+    labels = np.array([1 if label == "T" else 0 for label in labels], dtype=int)
 
-    # print(f"labels : {labels}", flush=True)
-    # print(f"all_preds : {all_preds}", flush=True)
+    def to_labels(pos_probs, threshold):
+        return (pos_probs >= threshold).astype("int")
 
-    # scores = compute_scores(labels=labels, preds=all_preds)
+    classification_thresh = 0.3
+    all_preds = to_labels(np.array(all_preds))
+    scores = compute_scores(labels=labels, preds=all_preds)
 
-    # print(flush=True)
-    # for key, value in scores.items():
-    #     print(key, ":", value, flush=True)
+    print(f"labels : {len(labels)}, {labels}", flush=True)
+    print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+
+    print(flush=True)
+    for key, value in scores.items():
+        print(key, ":", value, flush=True)
