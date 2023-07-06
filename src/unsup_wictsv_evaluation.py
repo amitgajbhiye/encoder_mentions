@@ -2,12 +2,14 @@ import torch
 import torch.nn as nn
 import csv
 import numpy as np
+import pandas as pd
 from scipy.spatial import distance
 
 import pickle
 
 from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
+
 
 from transformers import BertTokenizer
 from je_utils import read_config, set_seed, compute_scores
@@ -150,24 +152,59 @@ if __name__ == "__main__":
 
     data = _read_tsv(wictsv_file)[1:]
 
-    print(f"num_test_instance : {len(data)}", flush=True)
+    # Reading Labels
+    label = np.array(_read_tsv(inference_params["wictsv_test_file"])).flatten()
+    label = np.array([1 if label == "T" else 0 for label in label], dtype=int)
+
+    data_df = pd.DataFrame.from_records(data)
+    data_df.rename(
+        columns={
+            0: "word",
+            1: "idx",
+            2: "context",
+            3: "definition",
+            4: "domain",
+            5: "hypernym",
+        },
+        inplace=True,
+    )
+    data_df["label"] = label
+
+    test_domain = inference_params["test_domain"]
+
+    if test_domain:
+        # '0': 717, - WNT/WKT
+        # '2': 216, - CTL
+        # '1': 205, - MSH
+        # '3': 168, - CPS
+        print(f"Testing on Domain : {test_domain}")
+        data_df = data_df[data_df["domain"] == test_domain]
+    else:
+        print(f"Testing on All Domains")
+
+    print(f"num_test_instance : {len(data_df)}", flush=True)
 
     un_wictsv = UnsupervisedWicTsv(config=config)
 
-    all_preds = []
-    for batch_no, i in enumerate(range(0, len(data), batch_size)):
+    all_preds, all_labels = [], []
+
+    for batch_no, i in enumerate(range(0, len(data_df), batch_size)):
         print(flush=True)
         print(
-            f"Processing Batch : {batch_no} / {len(data)//batch_size + 1}", flush=True
+            f"Processing Batch : {batch_no} / {len(data_df)//batch_size + 1}",
+            flush=True,
         )
 
-        words = []
-        context_sents = []
-        definitions = []
+        words, context_sents, definitions, batch_labels = (
+            [],
+            [],
+            [],
+            [],
+        )
 
-        batch = data[i : i + batch_size]
+        batch = data_df.values[i : i + batch_size]
 
-        for word, _, context, definition, _, _ in batch:
+        for word, _, context, definition, _, _, label in batch:
             words.append(word)
             context_sents.append(
                 context.lower().replace(word.lower(), un_wictsv.tokenizer.mask_token)
@@ -175,12 +212,14 @@ if __name__ == "__main__":
             definitions.append(
                 un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
             )
+            batch_labels.append(label)
 
         print(f"***words : {len(words)}, {words}", flush=True)
         print(flush=True)
         print(f"***context_sents : {len(context_sents)}, {context_sents}", flush=True)
         print(flush=True)
         print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
+        print(f"***batch_labels : {len(batch_labels)}, {batch_labels}", flush=True)
 
         assert len(context_sents) == len(
             definitions
@@ -190,9 +229,8 @@ if __name__ == "__main__":
             context_sents=context_sents, definition_sents=definitions
         )
 
-        all_preds.extend(list(cosine_distance))
-
-    # print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+        all_preds.extend(cosine_distance)
+        all_labels.extend(batch_labels)
 
     probs_pkl_file = (
         "trained_models/wictsv_dev_cos_dist/wictsv_testset_cosine_distances.pickle"
@@ -200,18 +238,14 @@ if __name__ == "__main__":
     with open(probs_pkl_file, "wb") as pkl_file:
         pickle.dump(all_preds, pkl_file)
 
-    # Reading Labels
-    labels = np.array(_read_tsv(input_file=inference_params["label_file"])).flatten()
-    labels = np.array([1 if label == "T" else 0 for label in labels], dtype=int)
-
     def to_labels(probs, threshold):
         return (probs >= threshold).astype("int")
 
     classification_thresh = 0.3
     all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
-    scores = compute_scores(labels=labels, preds=all_preds)
+    scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 
-    print(f"labels : {len(labels)}, {labels}", flush=True)
+    print(f"labels : {len(all_labels)}, {all_labels}", flush=True)
     print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
     print(flush=True)
