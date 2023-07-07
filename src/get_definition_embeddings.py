@@ -160,19 +160,24 @@ class DatasetConceptSentence(Dataset):
 
 
 class ModelDefinitionEncoder(nn.Module):
-    # class ModelMentionEncoder(nn.Module):
     def __init__(self, model_params):
         super(ModelDefinitionEncoder, self).__init__()
 
         self.hf_checkpoint_name = model_params["hf_checkpoint_name"]
-        self.hf_model_path = model_params.get("hf_model_path")
         _, model_class, _, self.mask_token_id = CLASSES[self.hf_checkpoint_name]
 
-        log.info(f"model_class : {model_class}")
+        self.hf_model_path = model_params.get("hf_model_path")
 
-        self.encoder = model_class.from_pretrained(
-            self.hf_model_path, output_hidden_states=True
-        )
+        if self.hf_model_path:
+            self.encoder = model_class.from_pretrained(
+                self.hf_model_path, output_hidden_states=True
+            )
+        else:
+            self.encoder = BertForMaskedLM.from_pretrained(
+                self.hf_checkpoint_name, output_hidden_states=True
+            )
+
+        log.info(f"model_class : {model_class}")
 
     def forward(
         self,
@@ -294,7 +299,7 @@ def run_model(config, param_dict):
 if __name__ == "__main__":
     set_seed(1)
 
-    parser = ArgumentParser(description="Mention Encoder")
+    parser = ArgumentParser(description="Definition Encoder")
 
     parser.add_argument(
         "-c",
