@@ -1,5 +1,5 @@
 {
-    "experiment_name": "wictsv_msh",
+    "experiment_name": "wictsv_all_domain",
     "log_dirctory": "wictsv_evaluation",
     "dataset_params": {
         "dataset_name": "wictsv",
@@ -19,6 +19,7 @@
         "label_file": "data/wictsv/_test_labels.txt",
         "save_dir": "trained_models/mention_embeddings",
         "batch_size": 16,
-        "test_domain":3
+        "test_domain":null
+
     }
 }

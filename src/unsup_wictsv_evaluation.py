@@ -175,9 +175,9 @@ if __name__ == "__main__":
     print(f"data_df : {data_df}", flush=True)
     print(f"data_df.columns : {data_df.columns}", flush=True)
 
-    # test_domain = inference_params["test_domain"]
-    test_domain = "wnt"
-    if test_domain == "wnt":
+    # test_domain = "wnt"
+    test_domain = inference_params["test_domain"]
+    if test_domain:
         # '0': 717, - WNT/WKT
         # '1': 205, - MSH
         # '2': 216, - CTL
