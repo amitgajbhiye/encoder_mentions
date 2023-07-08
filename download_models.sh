@@ -1,7 +1,7 @@
 #!/bin/bash --login 
 
 mkdir -p logs 
-mkdir -p trained_models/embeddings
+mkdir -p trained_models
 
 cd trained_models
 
