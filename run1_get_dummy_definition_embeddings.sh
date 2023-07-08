@@ -17,6 +17,6 @@
 
 conda activate venv
 
-python3 src/get_definition_embeddings.py --config_file configs/get_definition_embeddings/get_definitions.json
+python3 src/get_definition_embeddings.py --config_file configs/get_definition_embeddings/get_definition_embeds.json
 
 echo 'Job Finished !!!'
