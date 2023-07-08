@@ -28,7 +28,7 @@ The following are the configuration file parameters:
 
 - word_sent_file: The file containing input data for which mention or definition embeddings are to be generated. The input file is in the tab seperated format of -  (word sentence).  
 
-- pretrained_model_path: The path of the mention and definition encoders downloaded.
+- pretrained_model_path: The path of the mention and definition encoders as downloaded above.
 
 - save_dir: The directory path where final embedding files will be saved. The embeddings are saved in a pickled list in the format - (word sentence embedding).
 
