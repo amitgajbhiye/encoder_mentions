@@ -12,10 +12,10 @@ cd encoder_mentions
 sh download_models.sh
 
 # To get mention embeddings run:
-python3 src/get_definition_embeddings.py --config_file configs/get_mention_embeddings/get_mention_embeds.json
+python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddings/get_mention_embeds.json
 
 #To get definition embeddings run:
-python3 src/get_definition_embeddings.py --config_file configs/get_mention_embeddings/get_mention_embeds.json
+python3 src/get_definition_embeddings.py --config_file configs/get_definition_embeddings/get_definition_embeds.json
 ```
 
 The `config_file` has the required parameters to guide the mention and definition embeddings generation. The default configuration file mentioned above for mention and definition generation generates the embeddings for the dummy science taxonomy mentiond in `word_sent_file` from the downloaded models saved in `trained models` directory.
