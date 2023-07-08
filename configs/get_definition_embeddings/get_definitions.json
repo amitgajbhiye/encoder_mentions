@@ -4,7 +4,7 @@
     "dataset_params": {
         "dataset_name": "definition_embeds",
         "hf_tokenizer_name": "bert-large-uncased",
-        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "hf_tokenizer_path": null,
         "max_len": 120,
         "word_sent_file": "data/clean_taxonomy_evaluation_sentences/sentences_science_ev.taxo.tsv"
     },
