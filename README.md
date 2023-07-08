@@ -8,6 +8,7 @@ git clone git@github.com:amitgajbhiye/encoder_mentions.git
 # Download the pretrained mention and definition encoders. 
 #The models will be downloaded in trained_models directory.
 
+cd encoder_mentions
 sh download_models.sh
 
 # To get mention embeddings run:
