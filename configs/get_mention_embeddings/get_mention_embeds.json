@@ -14,8 +14,8 @@
     },
     "inference_params": {
         "load_pretrained": true,
-        "pretrained_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
+        "pretrained_model_path": "trained_models/bert_large_mention_encoder_cnetpchatgpt_5k_cons.pt",
         "batch_size": 128,
-        "save_dir": "trained_models/mention_embeddings"
+        "save_dir": "trained_models"
     }
 }

@@ -14,9 +14,9 @@
     },
     "inference_params": {
         "load_pretrained": true,
-        "pretrained_model_path": "trained_models/definition_encoder/bert_large_wordnet_codwoe.pt",
+        "pretrained_model_path": "trained_models/bert_large_definition_encoder_wordnet_codwoe.pt",
         "batch_size": 128,
-        "save_dir": "trained_models/definition_embeddings"
+        "save_dir": "trained_models"
     }
     
 }
