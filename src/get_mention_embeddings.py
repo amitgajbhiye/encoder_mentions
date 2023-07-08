@@ -144,20 +144,10 @@ class DatasetConceptSentence(Dataset):
 
         return {"concept": concept, "sent": sent}
 
-    ############## Old ##############
-    # def mask_word_in_sent(self, con, sent):
-    #     srch = re.search(con, sent, re.IGNORECASE)
-    #     mask_sent = sent.replace(sent[srch.start() : srch.end()], self.mask_token, 1)
-
-    #     return mask_sent
-    ############## Old ##############
-
     def mask_word_in_sent(self, search_string, input_string):
         # Create a raw string with word boundaries from the user's input_string
         raw_search_string = r"\b" + search_string + r"\b"
-
         srch_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
-
         no_match_was_found = srch_output is None
 
         if no_match_was_found:
@@ -167,18 +157,11 @@ class DatasetConceptSentence(Dataset):
             print(f"sentence : {input_string}", flush=True)
             raise Exception("Concept is not in the Sentence")
         else:
-            # print(flush=True)
-            # print(f"concept_found", flush=True)
-            # print(f"concept : {search_string}", flush=True)
-            # print(f"sentence : {input_string}", flush=True)
             start_idx = srch_output.start()
             end_idx = srch_output.end()
-
             mask_sent = (
                 input_string[:start_idx] + self.mask_token + input_string[end_idx:]
             )
-            print(f"con, mask_sent : {search_string} - {mask_sent}", flush=True)
-
             return mask_sent
 
     def get_sent_ids(self, batch):
@@ -186,7 +169,6 @@ class DatasetConceptSentence(Dataset):
             self.mask_word_in_sent(con, sent)
             for con, sent in zip(batch["concept"], batch["sent"])
         ]
-
         encoded_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=sents,
             max_length=self.max_len,
@@ -196,30 +178,26 @@ class DatasetConceptSentence(Dataset):
             return_tensors="pt",
             return_token_type_ids=True,
         )
-
         return encoded_dict
 
 
 class ModelMentionEncoder(nn.Module):
     def __init__(self, model_params):
         super(ModelMentionEncoder, self).__init__()
-
         self.hf_checkpoint_name = model_params["hf_checkpoint_name"]
-
         self.hf_model_path = model_params.get("hf_model_path")
-
         _, model_class, _, self.mask_token_id = CLASSES[self.hf_checkpoint_name]
 
         log.info(f"model_class : {model_class}")
 
-        self.encoder = model_class.from_pretrained(
-            self.hf_model_path, output_hidden_states=True
-        )
-
-        # self.miner = miners.MultiSimilarityMiner()
-        # self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
-
-        # self.use_hard_pair = model_params["use_hard_pair"]
+        if self.hf_model_path:
+            self.encoder = model_class.from_pretrained(
+                self.hf_model_path, output_hidden_states=True
+            )
+        else:
+            self.encoder = BertForMaskedLM.from_pretrained(
+                self.hf_checkpoint_name, output_hidden_states=True
+            )
 
     def forward(
         self,
@@ -234,17 +212,12 @@ class ModelMentionEncoder(nn.Module):
             token_type_ids=token_type_ids,
             attention_mask=attention_mask,
         )
-
         hidden_states = outputs.hidden_states[-1]
-        print(f"hidden_states : {hidden_states.shape}", flush=True)
 
         def get_mask_token_embeddings(last_layer_hidden_states):
             _, mask_token_index = (
                 input_ids == torch.tensor(self.mask_token_id)
             ).nonzero(as_tuple=True)
-
-            print(f"mask_token_index: {mask_token_index}", flush=True)
-
             mask_vectors = torch.vstack(
                 [
                     torch.index_select(v, 0, torch.tensor(idx))
@@ -254,25 +227,21 @@ class ModelMentionEncoder(nn.Module):
             return mask_vectors
 
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
-        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
 
         return mask_vectors
 
 
 def prepare_data_and_models(config):
     ############
-    training_params = config["training_params"]
+    inference_params = config["inference_params"]
     dataset_params = config["dataset_params"]
     model_params = config["model_params"]
     ############
 
-    load_pretrained = training_params["load_pretrained"]
-    pretrained_model_path = training_params["pretrained_model_path"]
-
-    batch_size = training_params["batch_size"]
-
+    load_pretrained = inference_params["load_pretrained"]
+    pretrained_model_path = inference_params["pretrained_model_path"]
+    batch_size = inference_params["batch_size"]
     word_sent_file = dataset_params["word_sent_file"]
-
     num_workers = 4
 
     assert word_sent_file is not None, "please specify input file"
@@ -300,7 +269,6 @@ def prepare_data_and_models(config):
         log.info(f"load_pretrained is : {load_pretrained}")
         log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
         model.load_state_dict(torch.load(pretrained_model_path))
-
         log.info(f"Loaded Pretrained Model")
 
     log.info(f"model_class : {model.__class__.__name__}")
@@ -317,8 +285,7 @@ def run_model(config, param_dict):
 
     con_sent_dataset = param_dict["con_sent_dataset"]
     con_sent_dataloader = param_dict["con_sent_dataloader"]
-
-    training_params = config["training_params"]
+    inference_params = config["inference_params"]
     dataset_params = config["dataset_params"]
 
     con_sent_embed = []
@@ -337,23 +304,17 @@ def run_model(config, param_dict):
         mask_vectors = outputs
         mask_vectors = mask_vectors.cpu().numpy()
 
-        # print(f"*************************************")
-        # print(f"mask_vectors.shape : {mask_vectors.shape}")
-        # print(f"mask_vectors : {mask_vectors}")
-        # print(f"*************************************")
-
         for con, sent, embed in zip(batch["concept"], batch["sent"], mask_vectors):
             con_sent_embed.append((con, sent, embed))
 
-    save_dir = training_params["save_dir"]
+    save_dir = inference_params["save_dir"]
     dataset_name = dataset_params["dataset_name"]
-
     out_file_name = os.path.join(save_dir, f"{dataset_name}.pkl")
 
     with open(out_file_name, "wb") as pkl_file:
         pickle.dump(con_sent_embed, pkl_file, protocol=pickle.DEFAULT_PROTOCOL)
 
-    log.info(f"Embeddings are saved in : {out_file_name}")
+    log.info(f"Mention Embeddings are saved in : {out_file_name}")
     log.info("Program Finished.")
 
 
@@ -361,7 +322,6 @@ if __name__ == "__main__":
     set_seed(1)
 
     parser = ArgumentParser(description="Mention Encoder")
-
     parser.add_argument(
         "-c",
         "--config_file",
@@ -374,10 +334,8 @@ if __name__ == "__main__":
 
     set_logger(config=config)
     log = logging.getLogger(__name__)
-
     log.info("The model is run with the following configuration")
     log.info(f"\n {config} \n")
 
     param_dict = prepare_data_and_models(config=config)
-
     run_model(config=config, param_dict=param_dict)
