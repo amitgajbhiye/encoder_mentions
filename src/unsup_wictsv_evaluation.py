@@ -158,7 +158,9 @@ if __name__ == "__main__":
 
     print(f"label : {label}")
 
-    data_df = pd.DataFrame.from_records(data)
+    data_df = pd.DataFrame.from_records(
+        data
+    )  # word	idx	context	definition	domain	hypernym
     data_df.rename(
         columns={
             0: "word",
@@ -244,7 +246,8 @@ if __name__ == "__main__":
         pickle.dump(all_preds, pkl_file)
 
     def to_labels(probs, threshold):
-        return (probs >= threshold).astype("int")
+        # return (probs >= threshold).astype("int")
+        return (probs <= threshold).astype("int")
 
     classification_thresh = 0.3689  # 0.3
     all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)

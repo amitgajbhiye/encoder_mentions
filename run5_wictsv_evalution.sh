@@ -2,8 +2,8 @@
 
 #SBATCH --job-name=wicTSV
 
-#SBATCH --output=logs/wictsv_evaluation/out_thresh_0.36_all_domain_bert_large_uncased.txt
-#SBATCH --error=logs/wictsv_evaluation/err_thresh_0.36_all_domain_bert_large_uncased.txt
+#SBATCH --output=logs/wictsv_evaluation/out_thresh_2_0.36_all_domain_bert_large_uncased.txt
+#SBATCH --error=logs/wictsv_evaluation/err_thresh_2_0.36_all_domain_bert_large_uncased.txt
 
 #SBATCH --tasks-per-node=5
 #SBATCH --ntasks=5
