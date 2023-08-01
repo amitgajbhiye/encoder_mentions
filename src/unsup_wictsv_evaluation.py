@@ -117,7 +117,7 @@ class UnsupervisedWicTsv(nn.Module):
 
 
 def _read_tsv(input_file, quotechar=None):
-    """Reads a tab separated value file."""
+    """Reads a tab separated file."""
     with open(input_file, "r", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
         lines = []
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     def to_labels(probs, threshold):
         return (probs >= threshold).astype("int")
 
-    classification_thresh = 0.3
+    classification_thresh = 0.3689  # 0.3
     all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
     scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 

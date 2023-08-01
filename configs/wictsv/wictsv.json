@@ -1,5 +1,5 @@
 {
-    "experiment_name": "wictsv_all_domain",
+    "experiment_name": "wictsv_thresh_0.36_all_domain",
     "log_dirctory": "wictsv_evaluation",
     "dataset_params": {
         "dataset_name": "wictsv",
@@ -17,7 +17,7 @@
         "pretrained_definition_model_path": "trained_models/definition_encoder/bert_large_wordnet_codwoe.pt",
         "wictsv_test_file": "data/wictsv/processed_wictsv_testset.tsv",
         "label_file": "data/wictsv/_test_labels.txt",
-        "save_dir": "trained_models/mention_embeddings",
+        "save_dir": null,
         "batch_size": 16,
         "test_domain":null
 
