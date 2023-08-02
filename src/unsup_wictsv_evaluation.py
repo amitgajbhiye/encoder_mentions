@@ -154,13 +154,13 @@ if __name__ == "__main__":
 
     # Reading Labels
     label = np.array(_read_tsv(inference_params["label_file"])).flatten()
-    label = np.array([1 if label == "T" else 0 for label in label], dtype=int)
+    label = np.array([1 if l == "T" else 0 for l in label], dtype=int)
 
     print(f"label : {label}")
 
     data_df = pd.DataFrame.from_records(
         data
-    )  # word	idx	context	definition	domain	hypernym
+    )  # word idx context definition domain hypernym
     data_df.rename(
         columns={
             0: "word",
@@ -187,7 +187,7 @@ if __name__ == "__main__":
         print(f"Testing on Domain : {test_domain}")
         data_df = data_df[data_df["domain"] == str(0)]
     else:
-        print(f"Testing on All Domains")
+        print(f"*** Testing on All Domains ***")
 
     print(f"num_test_instance : {len(data_df)}", flush=True)
 
@@ -246,8 +246,8 @@ if __name__ == "__main__":
         pickle.dump(all_preds, pkl_file)
 
     def to_labels(probs, threshold):
-        # return (probs >= threshold).astype("int")
-        return (probs <= threshold).astype("int")
+        return (probs >= threshold).astype("int")
+        # return (probs <= threshold).astype("int")
 
     classification_thresh = 0.3689  # 0.3
     all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
