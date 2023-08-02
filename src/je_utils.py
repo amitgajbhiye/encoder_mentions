@@ -44,9 +44,9 @@ def compute_scores(labels, preds):
 
     scores = {
         "accuracy": round(accuracy_score(labels, preds), 4),
-        "precision": precision,
-        "recall": r,
-        "f1": f1,
+        "precision": round(precision, 4),
+        "recall": round(r, 4),
+        "f1": round(f1, 4),
         "binary_f1": round(f1_score(labels, preds, average="binary"), 4),
         "micro_f1": round(f1_score(labels, preds, average="micro"), 4),
         "macro_f1": round(f1_score(labels, preds, average="macro"), 4),
