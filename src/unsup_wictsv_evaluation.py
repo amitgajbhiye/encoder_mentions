@@ -179,13 +179,20 @@ if __name__ == "__main__":
 
     # test_domain = "wnt"
     test_domain = inference_params["test_domain"]
+
     if test_domain:
-        # '0': 717, - WNT/WKT
+        # '0': 717, - WNT/WKT # -1 in configfile
         # '1': 205, - MSH
         # '2': 216, - CTL
         # '3': 168, - CPS
-        print(f"Testing on Domain : {test_domain}")
-        data_df = data_df[data_df["domain"] == str(0)]
+
+        if test_domain == -1:
+            print(f"Testing on Domain : {'wnt_wkt'}", flush=True)
+            data_df = data_df[data_df["domain"] == str(0)]
+        else:
+            print(f"Testing on Domain : {test_domain}", flush=True)
+            data_df = data_df[data_df["domain"] == str(test_domain)]
+
     else:
         print(f"*** Testing on All Domains ***")
 
