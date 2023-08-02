@@ -2,8 +2,8 @@
 
 #SBATCH --job-name=wicTSV
 
-#SBATCH --output=logs/wictsv_evaluation/out_cps3_domain.txt
-#SBATCH --error=logs/wictsv_evaluation/err_cps3_domain.txt
+#SBATCH --output=logs/wictsv_evaluation/out_all0_domain.txt
+#SBATCH --error=logs/wictsv_evaluation/err_all0_domain.txt
 
 #SBATCH --tasks-per-node=5
 #SBATCH --ntasks=5
