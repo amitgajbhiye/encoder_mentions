@@ -2,8 +2,8 @@
 
 #SBATCH --job-name=wicTSV
 
-#SBATCH --output=logs/wictsv_evaluation/out_thresh_2_0.36_all_domain_bert_large_uncased.txt
-#SBATCH --error=logs/wictsv_evaluation/err_thresh_2_0.36_all_domain_bert_large_uncased.txt
+#SBATCH --output=logs/wictsv_evaluation/out_all_domain.txt
+#SBATCH --error=logs/wictsv_evaluation/err_all_domain.txt
 
 #SBATCH --tasks-per-node=5
 #SBATCH --ntasks=5
@@ -13,7 +13,7 @@
 #SBATCH --gres=gpu:1
 
 #SBATCH --mem=25G
-#SBATCH -t 0-02:00:00
+#SBATCH -t 0-01:00:00
 
 conda activate venv
 
