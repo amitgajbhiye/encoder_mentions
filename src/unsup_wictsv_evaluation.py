@@ -246,10 +246,9 @@ if __name__ == "__main__":
         pickle.dump(all_preds, pkl_file)
 
     def to_labels(probs, threshold):
-        # return (probs >= threshold).astype("int")
         return (probs <= threshold).astype("int")
 
-    classification_thresh = 0.3689  # 0.3
+    classification_thresh = 0.6369
     all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
     scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 
