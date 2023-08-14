@@ -171,6 +171,9 @@ os.makedirs(output_folder, exist_ok=True)
 # config_file = "configs/coda21/coda21.json"
 config_file = "configs/coda21/conceptcontra.json"
 
+
+print(f"**** config_file ****: {config_file}", flush=True)
+
 mention_enc, def_enc, tokenizer = load_models_and_tokenizer(
     config_file_path=config_file
 )
