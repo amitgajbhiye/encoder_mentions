@@ -152,12 +152,6 @@ if __name__ == "__main__":
 
     data = _read_tsv(wictsv_file)[1:]
 
-    # Reading Labels
-    label = np.array(_read_tsv(inference_params["label_file"])).flatten()
-    label = np.array([1 if l == "T" else 0 for l in label], dtype=int)
-
-    print(f"label : {label}")
-
     data_df = pd.DataFrame.from_records(
         data
     )  # word idx context definition domain hypernym
@@ -172,7 +166,13 @@ if __name__ == "__main__":
         },
         inplace=True,
     )
-    data_df["label"] = label
+    # Reading Labels
+    if inference_params["label_file"]:
+        label = np.array(_read_tsv(inference_params["label_file"])).flatten()
+        label = np.array([1 if l == "T" else 0 for l in label], dtype=int)
+        print(f"label : {label}")
+
+        data_df["label"] = label
 
     print(f"data_df : {data_df}", flush=True)
     print(f"data_df.columns : {data_df.columns}", flush=True)
