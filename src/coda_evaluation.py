@@ -286,6 +286,6 @@ for dataset in datasets:
 
         with open(os.path.join(output_folder, save_file), "wb") as handle:
             print(
-                f"average_alignment on: {save_file}: {np.average([item['alignment_score'] for item in all_results])}"
+                f"average_alignment on: {save_file}: {round(np.average([item['alignment_score'] for item in all_results]), 2)}"
             )
             pickle.dump(all_results, handle)
