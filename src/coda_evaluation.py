@@ -162,23 +162,22 @@ random.seed(42)
 
 # emb_model = SentenceTransformer(sentence_model, device=f"cuda:{gpu_id}")
 
-sentence_model = "bert_large_uncased"
+sentence_model = "conceptcontra_bert_large_uncased"
 
 data_folder = "data/coda21"
 output_folder = f"output/{sentence_model}"
 os.makedirs(output_folder, exist_ok=True)
 
 # config_file = "configs/coda21/coda21.json"
-# config_file = "configs/coda21/conceptcontra.json"
+config_file = "configs/coda21/conceptcontra.json"
 
-config_file = "configs/coda21/propertycontra.json"
+# config_file = "configs/coda21/propertycontra.json"
 
 print(f"**** config_file ****: {config_file}", flush=True)
 
 mention_enc, def_enc, tokenizer = load_models_and_tokenizer(
     config_file_path=config_file
 )
-
 
 datasets = [
     "CoDA-clean-easy.json",
@@ -287,4 +286,7 @@ for dataset in datasets:
                     pickle.dump(all_results, handle)
 
         with open(os.path.join(output_folder, save_file), "wb") as handle:
+            print(
+                f"average_alignment on: {save_file}: {np.average([item['alignment_score'] for item in all_results])}"
+            )
             pickle.dump(all_results, handle)
