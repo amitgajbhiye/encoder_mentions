@@ -246,20 +246,20 @@ if __name__ == "__main__":
         all_preds.extend(cosine_distance)
         all_labels.extend(batch_labels)
 
-    probs_pkl_file = "trained_models/wictsv_dev_cos_dist/conceptcontra_wictsv_devset_cosine_distances.pickle"
+    probs_pkl_file = "trained_models/wictsv_dev_cos_dist/conceptcontra_wictsv_testset_cosine_distances.pickle"
     with open(probs_pkl_file, "wb") as pkl_file:
         pickle.dump(all_preds, pkl_file)
 
-    # def to_labels(probs, threshold):
-    #     return (probs <= threshold).astype("int")
+    def to_labels(probs, threshold):
+        return (probs <= threshold).astype("int")
 
-    # classification_thresh = 0.6369
-    # all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
-    # scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
+    classification_thresh = 0.6369
+    all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
+    scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 
-    # print(f"labels : {len(all_labels)}, {all_labels}", flush=True)
-    # print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+    print(f"labels : {len(all_labels)}, {all_labels}", flush=True)
+    print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
-    # print(flush=True)
-    # for key, value in scores.items():
-    #     print(key, ":", value, flush=True)
+    print(flush=True)
+    for key, value in scores.items():
+        print(key, ":", value, flush=True)
