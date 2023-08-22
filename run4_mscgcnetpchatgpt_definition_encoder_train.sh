@@ -13,10 +13,10 @@
 #SBATCH --gres=gpu:2
 
 #SBATCH --mem=16G
-#SBATCH -t 1-15:00:00
+#SBATCH -t 1-12:00:00
 
 conda activate venv
 
-python3 src/definition_encoder.py --config_file configs/definition/bert_large_mscgcnetpchatgpt_pt_entropy_model_wordnet_codwoe.json
+python3 src/definition_encoder.py --config_file configs/definition/bert_large_wordnet_codwoe.json
 
 echo 'Job Finished !!!'

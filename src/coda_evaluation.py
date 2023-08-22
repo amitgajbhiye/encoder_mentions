@@ -162,7 +162,7 @@ random.seed(42)
 
 # emb_model = SentenceTransformer(sentence_model, device=f"cuda:{gpu_id}")
 
-sentence_model = "propertycontra_bert_large_uncased"
+sentence_model = "mscgcnetpchatgpt_entropy_bert_large"
 
 data_folder = "data/coda21"
 output_folder = f"output/{sentence_model}"
@@ -170,7 +170,8 @@ os.makedirs(output_folder, exist_ok=True)
 
 # config_file = "configs/coda21/coda21.json"
 # config_file = "configs/coda21/conceptcontra.json"
-config_file = "configs/coda21/propertycontra.json"
+# config_file = "configs/coda21/propertycontra.json"
+config_file = "configs/coda21/mscgcnetpchatgpt_entropy_bert_large.json"
 
 print(f"**** config_file ****: {config_file}", flush=True)
 
