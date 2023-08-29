@@ -299,8 +299,8 @@ def run_model(config, param_dict):
     model.eval()
     for step, batch in enumerate(tqdm(con_sent_dataloader, desc="Iter")):
         log.info(f"Processing batch {step+1} / {len(con_sent_dataloader)}")
-        print(f"concept : {batch['concept']}", flush=True)
-        print(f"sents : {batch['sent']}", flush=True)
+        # print(f"concept : {batch['concept']}", flush=True)
+        # print(f"sents : {batch['sent']}", flush=True)
 
         ids_dict = con_sent_dataset.get_sent_ids(batch)
         ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
