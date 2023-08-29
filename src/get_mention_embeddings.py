@@ -145,8 +145,15 @@ class DatasetConceptSentence(Dataset):
         return {"concept": concept, "sent": sent}
 
     def mask_word_in_sent(self, search_string, input_string):
-        # Create a raw string with word boundaries from the user's input_string
-        raw_search_string = r"\b" + search_string + r"\b"
+        def has_metacharacters(word):
+            metacharacters = r"[]().*+?|{}^$\\"
+            return [char for char in word if char in metacharacters]
+
+        if has_metacharacters(word=search_string):
+            raw_search_string = re.escape(search_string)
+        else:
+            raw_search_string = r"\b" + search_string + r"\b"
+
         srch_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
         no_match_was_found = srch_output is None
 
