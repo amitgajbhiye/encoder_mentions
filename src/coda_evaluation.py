@@ -296,8 +296,9 @@ def main(config):
                     #     pickle.dump(all_results, handle)
 
             with open(os.path.join(results_dir, save_file), "wb") as handle:
+                print(f"total_sample_groups : {len(sample_groups)}")
                 print(
-                    f"average_alignment on: {save_file}: {round(np.average([item['alignment_score'] for item in all_results]), 2)}"
+                    f"average_alignment on: {save_file}: {len(all_results)}, {round(np.average([item['alignment_score'] for item in all_results]), 2)}"
                 )
                 pickle.dump(all_results, handle)
 
