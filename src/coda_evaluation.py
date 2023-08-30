@@ -171,7 +171,7 @@ def main(config):
     save_dir = inference_params["save_dir"]
     results_dir = os.path.join(save_dir, sentence_model)
 
-    os.mkdir(results_dir, exist_ok=False)
+    os.makedirs(results_dir, exist_ok=False)
 
     ####################################################
     sentence_model = "mscgcnetpchatgpt_entropy_bert_large"
