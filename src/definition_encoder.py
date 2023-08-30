@@ -184,9 +184,9 @@ class DatasetConceptSentence(Dataset):
         return encoded_dict
 
 
-class ModelMentionEncoder(nn.Module):
+class ModelDefinitionEncoder(nn.Module):
     def __init__(self, model_params):
-        super(ModelMentionEncoder, self).__init__()
+        super(ModelDefinitionEncoder, self).__init__()
 
         self.hf_checkpoint_name = model_params["hf_checkpoint_name"]
         self.hf_model_path = model_params["hf_model_path"]
@@ -206,9 +206,9 @@ class ModelMentionEncoder(nn.Module):
 
     def forward(
         self,
-        pretrained_con_embeds,
         input_ids,
         attention_mask,
+        pretrained_con_embeds=None,
         token_type_ids=None,
         labels=None,
     ):
@@ -245,6 +245,7 @@ class ModelMentionEncoder(nn.Module):
         print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
         print(f"mask_vectors :{mask_vectors.shape}", flush=True)
 
+        loss = None
         if self.use_hard_pair:
             hard_pairs = self.miner(emb_all, labels)
             loss = self.loss_fn(emb_all, labels, hard_pairs)
@@ -322,7 +323,7 @@ def prepare_data_and_models(config):
     log.info(f"Pretrained Model Path : {pretrained_model_path}")
 
     # Creating Model
-    model = ModelMentionEncoder(model_params=model_params)
+    model = ModelDefinitionEncoder(model_params=model_params)
 
     if load_pretrained:
         log.info(f"load_pretrained is : {load_pretrained}")

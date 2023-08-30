@@ -207,10 +207,10 @@ class ModelMentionEncoder(nn.Module):
 
     def forward(
         self,
-        pretrained_con_embeds,
         input_ids,
         attention_mask,
         token_type_ids=None,
+        pretrained_con_embeds=None,
         labels=None,
     ):
         outputs = self.encoder(
@@ -249,6 +249,7 @@ class ModelMentionEncoder(nn.Module):
         labels = torch.cat([labels, labels], dim=0)
         print(f"labels :{labels.shape}: {labels}", flush=True, end="\n")
 
+        loss = None
         if self.use_hard_pair:
             hard_pairs = self.miner(emb_all, labels)
             loss = self.loss_fn(emb_all, labels, hard_pairs)

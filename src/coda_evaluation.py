@@ -1,27 +1,25 @@
 import json
 import os
 import pickle
-
 import sys
+from argparse import ArgumentParser
 from itertools import permutations
 
 import numpy as np
 import torch
 import torch.nn as nn
-
-from sentence_transformers import SentenceTransformer
-from argparse import ArgumentParser
-
-
-# from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_similarity as cosine
+from transformers import BertTokenizer
 
 import log
 
-from get_mention_embeddings import ModelMentionEncoder as mention_encoder
-from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
+# from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
+# from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 
-from transformers import BertTokenizer
+from mention_encoder import ModelMentionEncoder as mention_enc
+from definition_encoder import ModelDefinitionEncoder as definition_enc
+
+
 from je_utils import read_config, set_seed
 
 sys.path.insert(0, os.getcwd())
@@ -45,23 +43,22 @@ def load_models_and_tokenizer(config):
     ]
 
     # Creating Mention Model
-    men_model = nn.DataParallel(mention_encoder(model_params=model_params))
+    men_model = nn.DataParallel(mention_enc(model_params=model_params))
     men_model.to(device=device)
 
     # Creating Definition Model
-    def_model = nn.DataParallel(definition_encoder(model_params=model_params))
+    def_model = nn.DataParallel(definition_enc(model_params=model_params))
     def_model.to(device=device)
 
     men_model.load_state_dict(torch.load(pretrained_mention_model_path))
     def_model.load_state_dict(torch.load(pretrained_definition_model_path))
+    tokenizer = BertTokenizer.from_pretrained(dataset_params["hf_tokenizer_path"])
 
     print(f"Mention Model is loaded from : {pretrained_mention_model_path}", flush=True)
     print(
         f"Definition Model is loaded from : {pretrained_definition_model_path}",
         flush=True,
     )
-
-    tokenizer = BertTokenizer.from_pretrained(dataset_params["hf_tokenizer_path"])
 
     return men_model, def_model, tokenizer
 
@@ -82,7 +79,7 @@ def get_mention_embeds(mention_enc, tokenizer, context_sents):
     ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
 
     with torch.no_grad():
-        mention_vectors = mention_enc(pretrained_con_embeds=None, **ids_dict)
+        _, mention_vectors = mention_enc(pretrained_con_embeds=None, **ids_dict)
 
     return mention_vectors.cpu().numpy()
 
@@ -103,7 +100,7 @@ def get_definition_embeds(definition_enc, tokenizer, definition_sents):
     ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
 
     with torch.no_grad():
-        def_vectors = definition_enc(pretrained_con_embeds=None, **ids_dict)
+        _, def_vectors = definition_enc(pretrained_con_embeds=None, **ids_dict)
 
     return def_vectors.cpu().numpy()
 
@@ -135,8 +132,6 @@ def find_best_allignment(scores: np.array):
     # scores should be n x n  array where n is number of candidates in a synset group
     syn_count = scores.shape[0]
     all_permutations = list(permutations(range(syn_count)))
-    # print(scores.shape)
-    # print(scores)
 
     best_score = -(10**10)
     for perm_no, permutation in enumerate(all_permutations):
@@ -154,39 +149,14 @@ def find_best_allignment(scores: np.array):
 
 
 def main(config):
-    # random.seed(42)
-    # gpu_id = 0
-    # sentence_model = "paraphrase-mpnet-base-v2"
-    # sentence_model = "paraphrase-MiniLM-L6-v2"
-    # sentence_model = "all-mpnet-base-v2"
-    # sentence_model = "all-MiniLM-L6-v2"
-
-    # emb_model = SentenceTransformer(sentence_model, device=f"cuda:{gpu_id}")
-
     inference_params = config["inference_params"]
-
     data_folder = inference_params["data_folder"]
     sentence_model = inference_params["sentence_model"]
-
     save_dir = inference_params["save_dir"]
     results_dir = os.path.join(save_dir, sentence_model)
-
     os.makedirs(results_dir, exist_ok=False)
 
-    ####################################################
-    sentence_model = "mscgcnetpchatgpt_entropy_bert_large"
-
-    data_folder = "data/coda21"
-    # output_folder = f"output/{sentence_model}"
-    # os.makedirs(output_folder, exist_ok=False)
-
-    # config_file = "configs/coda21/coda21.json"
-    # config_file = "configs/coda21/conceptcontra.json"
-    # config_file = "configs/coda21/propertycontra.json"
-    config_file = "configs/coda21/mscgcnetpchatgpt_entropy_bert_large.json"
-
     mention_enc, def_enc, tokenizer = load_models_and_tokenizer(config=config)
-
     datasets = [
         "CoDA-clean-easy.json",
         "CoDA-clean-hard.json",
@@ -216,7 +186,6 @@ def main(config):
             all_results = []
             sample_groups = CoDA[word_type]
 
-            print(f"total_sample_groups : {len(sample_groups)}", flush=True)
             for group_no, sample_group in enumerate(sample_groups):
                 candidates = sample_group["candidates"]
 
@@ -240,12 +209,6 @@ def main(config):
                     print(f"word: {candidate['words_in_contexts'][0]}")
                     print(f"masked_context: {context}", flush=True)
                     print(f"definition: {definition}", flush=True)
-
-                print(f"contexts : {contexts}", flush=True)
-                print(f"definitions : {definitions}", flush=True)
-
-                # context_embs = emb_model.encode(contexts)
-                # definition_embs = emb_model.encode(definitions)
 
                 context_embs = get_mention_embeds(
                     mention_enc=mention_enc, tokenizer=tokenizer, context_sents=contexts
@@ -291,9 +254,6 @@ def main(config):
                         os.path.join(results_dir, print_file), "a", encoding="UTF-8"
                     ) as f_out:
                         f_out.write(get_print_result(sample_group, sample_result))
-
-                    # with open(os.path.join(results_dir, save_file), "wb") as handle:
-                    #     pickle.dump(all_results, handle)
 
             with open(os.path.join(results_dir, save_file), "wb") as handle:
                 print(f"total_sample_groups : {len(sample_groups)}")
