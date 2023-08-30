@@ -200,7 +200,7 @@ class ModelMentionEncoder(nn.Module):
             self.hf_model_path, output_hidden_states=True
         )
 
-        self.run_mode = model_params["mode"]
+        self.run_mode = model_params["run_mode"]
         if self.run_mode == "train":
             self.miner = miners.MultiSimilarityMiner()
             self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
