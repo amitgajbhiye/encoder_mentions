@@ -1,15 +1,17 @@
 import json
 import os
 import pickle
-import random
+
 import sys
 from itertools import permutations
 
 import numpy as np
 import torch
 import torch.nn as nn
-from genericpath import exists
+
 from sentence_transformers import SentenceTransformer
+from argparse import ArgumentParser
+
 
 # from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_similarity as cosine
@@ -30,17 +32,15 @@ logger.propagate = False
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
-def load_models_and_tokenizer(config_file_path):
-    config = read_config(config_file_path)
-
+def load_models_and_tokenizer(config):
     ############
-    training_params = config["training_params"]
+    inference_params = config["inference_params"]
     dataset_params = config["dataset_params"]
     model_params = config["model_params"]
     ############
 
-    pretrained_mention_model_path = training_params["pretrained_mention_model_path"]
-    pretrained_definition_model_path = training_params[
+    pretrained_mention_model_path = inference_params["pretrained_mention_model_path"]
+    pretrained_definition_model_path = inference_params[
         "pretrained_definition_model_path"
     ]
 
@@ -153,140 +153,168 @@ def find_best_allignment(scores: np.array):
     return predicted_alignment, aligment_score
 
 
-random.seed(42)
-# gpu_id = 0
-# sentence_model = "paraphrase-mpnet-base-v2"
-# sentence_model = "paraphrase-MiniLM-L6-v2"
-# sentence_model = "all-mpnet-base-v2"
-# sentence_model = "all-MiniLM-L6-v2"
+def main(config):
+    # random.seed(42)
+    # gpu_id = 0
+    # sentence_model = "paraphrase-mpnet-base-v2"
+    # sentence_model = "paraphrase-MiniLM-L6-v2"
+    # sentence_model = "all-mpnet-base-v2"
+    # sentence_model = "all-MiniLM-L6-v2"
 
-# emb_model = SentenceTransformer(sentence_model, device=f"cuda:{gpu_id}")
+    # emb_model = SentenceTransformer(sentence_model, device=f"cuda:{gpu_id}")
 
-sentence_model = "mscgcnetpchatgpt_entropy_bert_large"
+    inference_params = config["inference_params"]
 
-data_folder = "data/coda21"
-output_folder = f"output/{sentence_model}"
-os.makedirs(output_folder, exist_ok=True)
+    data_folder = inference_params["data_folder"]
+    sentence_model = inference_params["sentence_model"]
 
-# config_file = "configs/coda21/coda21.json"
-# config_file = "configs/coda21/conceptcontra.json"
-# config_file = "configs/coda21/propertycontra.json"
-config_file = "configs/coda21/mscgcnetpchatgpt_entropy_bert_large.json"
+    save_dir = inference_params["save_dir"]
+    results_dir = os.path.join(save_dir, sentence_model)
 
-print(f"**** config_file ****: {config_file}", flush=True)
+    os.mkdir(results_dir, exist_ok=False)
 
-mention_enc, def_enc, tokenizer = load_models_and_tokenizer(
-    config_file_path=config_file
-)
+    ####################################################
+    sentence_model = "mscgcnetpchatgpt_entropy_bert_large"
 
-datasets = [
-    "CoDA-clean-easy.json",
-    "CoDA-clean-hard.json",
-    "CoDA-noisy-easy.json",
-    "CoDA-noisy-hard.json",
-]
-word_types = ["n", "v"]
+    data_folder = "data/coda21"
+    # output_folder = f"output/{sentence_model}"
+    # os.makedirs(output_folder, exist_ok=False)
 
+    # config_file = "configs/coda21/coda21.json"
+    # config_file = "configs/coda21/conceptcontra.json"
+    # config_file = "configs/coda21/propertycontra.json"
+    config_file = "configs/coda21/mscgcnetpchatgpt_entropy_bert_large.json"
 
-for dataset in datasets:
-    data_file = os.path.join(data_folder, dataset)
-    with open(data_file, "r") as handle:
-        CoDA = json.load(handle)
+    mention_enc, def_enc, tokenizer = load_models_and_tokenizer(config=config)
 
-    for word_type in word_types:
-        logger.info(
-            f"Evaluating {sentence_model} on {dataset.split('.')[0]}_{word_type}"
-        )
+    datasets = [
+        "CoDA-clean-easy.json",
+        "CoDA-clean-hard.json",
+        "CoDA-noisy-easy.json",
+        "CoDA-noisy-hard.json",
+    ]
+    word_types = ["n", "v"]
 
-        print_file = (
-            f"on_{dataset.split('.')[0]}_{word_type}_some_results_target_removed.txt"
-        )
-        save_file = (
-            f"on_{dataset.split('.')[0]}_{word_type}_results_target_removed.pickle"
-        )
+    for dataset in datasets:
+        data_file = os.path.join(data_folder, dataset)
+        with open(data_file, "r") as handle:
+            CoDA = json.load(handle)
 
-        f_out = open(os.path.join(output_folder, print_file), "w", encoding="UTF-8")
-        f_out.close()
+        for word_type in word_types:
+            logger.info(
+                f"Evaluating {sentence_model} on {dataset.split('.')[0]}_{word_type}"
+            )
 
-        all_results = []
-        sample_groups = CoDA[word_type]
-        for group_no, sample_group in enumerate(sample_groups):
-            candidates = sample_group["candidates"]
+            print_file = f"on_{dataset.split('.')[0]}_{word_type}_some_results_target_removed.txt"
+            save_file = (
+                f"on_{dataset.split('.')[0]}_{word_type}_results_target_removed.pickle"
+            )
 
-            contexts = []
-            definitions = []
-            for cand_no, candidate in enumerate(candidates):
+            f_out = open(os.path.join(results_dir, print_file), "w", encoding="UTF-8")
+            f_out.close()
+
+            all_results = []
+            sample_groups = CoDA[word_type]
+
+            print(f"total_sample_groups : {len(sample_groups)}", flush=True)
+            for group_no, sample_group in enumerate(sample_groups):
+                candidates = sample_group["candidates"]
+
+                contexts = []
+                definitions = []
+                for cand_no, candidate in enumerate(candidates):
+                    print(flush=True)
+
+                    print(f"unmasked_context: {candidate['contexts'][0]}", flush=True)
+
+                    context = candidate["contexts"][0].replace(
+                        candidate["words_in_contexts"][0], tokenizer.mask_token
+                    )
+                    definition = (
+                        tokenizer.mask_token + ":" + " " + candidate["definition"]
+                    )
+
+                    contexts.append(context)
+                    definitions.append(definition)
+
+                    print(f"word: {candidate['words_in_contexts'][0]}")
+                    print(f"masked_context: {context}", flush=True)
+                    print(f"definition: {definition}", flush=True)
+
+                print(f"contexts : {contexts}", flush=True)
+                print(f"definitions : {definitions}", flush=True)
+
+                # context_embs = emb_model.encode(contexts)
+                # definition_embs = emb_model.encode(definitions)
+
+                context_embs = get_mention_embeds(
+                    mention_enc=mention_enc, tokenizer=tokenizer, context_sents=contexts
+                )
+
+                definition_embs = get_definition_embeds(
+                    definition_enc=def_enc,
+                    tokenizer=tokenizer,
+                    definition_sents=definitions,
+                )
+
                 print(flush=True)
+                print(f"context_embs.shape : {context_embs.shape}", flush=True)
+                print(f"definition_embs.shape : {definition_embs.shape}", flush=True)
 
-                print(f"unmasked_context: {candidate['contexts'][0]}", flush=True)
+                scores = cosine(context_embs, definition_embs)
+                predicted_alignment, aligment_score = find_best_allignment(scores)
 
-                context = candidate["contexts"][0].replace(
-                    candidate["words_in_contexts"][0], tokenizer.mask_token
+                print(flush=True)
+                print(f"scores.shape : {scores.shape}", flush=True)
+                print(
+                    f"predicted_alignment: {predicted_alignment.shape}, {predicted_alignment}",
+                    flush=True,
                 )
-                definition = tokenizer.mask_token + ":" + " " + candidate["definition"]
-
-                contexts.append(context)
-                definitions.append(definition)
-
-                print(f"word: {candidate['words_in_contexts'][0]}")
-                print(f"masked_context: {context}", flush=True)
-                print(f"definition: {definition}", flush=True)
-
-            print(f"contexts : {contexts}", flush=True)
-            print(f"definitions : {definitions}", flush=True)
-
-            # context_embs = emb_model.encode(contexts)
-            # definition_embs = emb_model.encode(definitions)
-
-            context_embs = get_mention_embeds(
-                mention_enc=mention_enc, tokenizer=tokenizer, context_sents=contexts
-            )
-
-            definition_embs = get_definition_embeds(
-                definition_enc=def_enc,
-                tokenizer=tokenizer,
-                definition_sents=definitions,
-            )
-
-            print(flush=True)
-            print(f"context_embs.shape : {context_embs.shape}", flush=True)
-            print(f"definition_embs.shape : {definition_embs.shape}", flush=True)
-
-            scores = cosine(context_embs, definition_embs)
-            predicted_alignment, aligment_score = find_best_allignment(scores)
-
-            print(flush=True)
-            print(f"scores.shape : {scores.shape}", flush=True)
-            print(
-                f"predicted_alignment: {predicted_alignment.shape}, {predicted_alignment}",
-                flush=True,
-            )
-            print(
-                f"aligment_score: {aligment_score.shape}, {aligment_score}", flush=True
-            )
-
-            sample_result = {}
-            sample_result["predicted_alignment"] = predicted_alignment
-            sample_result["alignment_score"] = aligment_score
-
-            all_results.append(sample_result)
-
-            if (group_no + 1) % 20 == 0:
-                logger.info(
-                    f"{group_no+1}/{len(sample_groups)} synset groups processed"
+                print(
+                    f"aligment_score: {aligment_score.shape}, {aligment_score}",
+                    flush=True,
                 )
 
-            if (group_no + 1) % (len(sample_groups) // 20) == 0:
-                with open(
-                    os.path.join(output_folder, print_file), "a", encoding="UTF-8"
-                ) as f_out:
-                    f_out.write(get_print_result(sample_group, sample_result))
+                sample_result = {}
+                sample_result["predicted_alignment"] = predicted_alignment
+                sample_result["alignment_score"] = aligment_score
 
-                with open(os.path.join(output_folder, save_file), "wb") as handle:
-                    pickle.dump(all_results, handle)
+                all_results.append(sample_result)
 
-        with open(os.path.join(output_folder, save_file), "wb") as handle:
-            print(
-                f"average_alignment on: {save_file}: {round(np.average([item['alignment_score'] for item in all_results]), 2)}"
-            )
-            pickle.dump(all_results, handle)
+                if (group_no + 1) % 20 == 0:
+                    logger.info(
+                        f"{group_no+1}/{len(sample_groups)} synset groups processed"
+                    )
+
+                if (group_no + 1) % (len(sample_groups) // 20) == 0:
+                    with open(
+                        os.path.join(results_dir, print_file), "a", encoding="UTF-8"
+                    ) as f_out:
+                        f_out.write(get_print_result(sample_group, sample_result))
+
+                    # with open(os.path.join(results_dir, save_file), "wb") as handle:
+                    #     pickle.dump(all_results, handle)
+
+            with open(os.path.join(results_dir, save_file), "wb") as handle:
+                print(
+                    f"average_alignment on: {save_file}: {round(np.average([item['alignment_score'] for item in all_results]), 2)}"
+                )
+                pickle.dump(all_results, handle)
+
+
+if __name__ == "__main__":
+    set_seed(1)
+
+    parser = ArgumentParser(description="CoDA21 Unsupervised Evaluation")
+
+    parser.add_argument(
+        "-c",
+        "--config_file",
+        required=True,
+        help="path to the configuration file",
+    )
+
+    args = parser.parse_args()
+    config = read_config(args.config_file)
+
+    main(config=config)
