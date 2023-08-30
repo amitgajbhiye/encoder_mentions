@@ -221,7 +221,7 @@ class ModelMentionEncoder(nn.Module):
         )
 
         hidden_states = outputs.hidden_states[-1]
-        print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
+
         print(f"hidden_states : {hidden_states.shape}", flush=True)
 
         def get_mask_token_embeddings(last_layer_hidden_states):
