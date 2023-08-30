@@ -199,10 +199,12 @@ class ModelDefinitionEncoder(nn.Module):
             self.hf_model_path, output_hidden_states=True
         )
 
-        self.miner = miners.MultiSimilarityMiner()
-        self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
+        self.run_mode = model_params["run_mode"]
 
-        self.use_hard_pair = model_params["use_hard_pair"]
+        if self.run_mode == "train":
+            self.miner = miners.MultiSimilarityMiner()
+            self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
+            self.use_hard_pair = model_params["use_hard_pair"]
 
     def forward(
         self,
@@ -233,24 +235,26 @@ class ModelDefinitionEncoder(nn.Module):
             return mask_vectors
 
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
-        emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
-        print(f"emb_all :{emb_all.shape}", flush=True)
-
-        if labels is None:
-            labels = torch.arange(mask_vectors.size(0))
-        labels = torch.cat([labels, labels], dim=0)
-        print(f"labels :{labels.shape}", flush=True)
-
-        print(f"hidden_states : {hidden_states.shape}", flush=True)
-        print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
-        print(f"mask_vectors :{mask_vectors.shape}", flush=True)
 
         loss = None
-        if self.use_hard_pair:
-            hard_pairs = self.miner(emb_all, labels)
-            loss = self.loss_fn(emb_all, labels, hard_pairs)
-        else:
-            loss = self.loss_fn(emb_all, labels)
+        if self.run_mode == "train":
+            emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
+            print(f"emb_all :{emb_all.shape}", flush=True)
+
+            if labels is None:
+                labels = torch.arange(mask_vectors.size(0))
+            labels = torch.cat([labels, labels], dim=0)
+            print(f"labels :{labels.shape}", flush=True)
+
+            print(f"hidden_states : {hidden_states.shape}", flush=True)
+            print(f"pretrained_con_embeds :{pretrained_con_embeds.shape}", flush=True)
+            print(f"mask_vectors :{mask_vectors.shape}", flush=True)
+
+            if self.use_hard_pair:
+                hard_pairs = self.miner(emb_all, labels)
+                loss = self.loss_fn(emb_all, labels, hard_pairs)
+            else:
+                loss = self.loss_fn(emb_all, labels)
 
         return loss, mask_vectors
 
