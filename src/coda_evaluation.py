@@ -13,13 +13,8 @@ from transformers import BertTokenizer
 
 import log
 
-# from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
-# from get_mention_embeddings import ModelMentionEncoder as mention_encoder
-
 from mention_encoder import ModelMentionEncoder as mention_enc
 from definition_encoder import ModelDefinitionEncoder as definition_enc
-
-
 from je_utils import read_config, set_seed
 
 sys.path.insert(0, os.getcwd())
