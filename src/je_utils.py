@@ -56,3 +56,49 @@ def compute_scores(labels, preds):
     }
 
     return scores
+
+
+def calculate_inbatch_cross_entropy_loss(
+    concept_embeddings, property_embeddings, loss_fn, device
+):
+    batch_logits, batch_labels = [], []
+
+    logits_pos_concepts = (
+        (concept_embeddings * property_embeddings)
+        .sum(-1)
+        .reshape(property_embeddings.shape[0], 1)
+    )
+    labels_pos_concepts = torch.ones_like(
+        logits_pos_concepts, dtype=torch.float32, device=device
+    )
+
+    ##############
+    loss_pos_concept = loss_fn(logits_pos_concepts, labels_pos_concepts)
+    ##############
+
+    concept_embeddings = concept_embeddings.unsqueeze(1)
+    property_embeddings = property_embeddings.unsqueeze(0)
+
+    logits_neg_concepts = torch.sum(concept_embeddings * property_embeddings, dim=2)
+    logits_neg_concepts.fill_diagonal_(0.0)
+    logits_neg_concepts = logits_neg_concepts.flatten()
+
+    labels_neg_concepts = torch.zeros_like(
+        logits_neg_concepts, dtype=torch.float32, device=device
+    )
+
+    ##############
+    loss_neg_concept = loss_fn(logits_neg_concepts, labels_neg_concepts)
+    ##############
+
+    ##############
+    total_loss = loss_pos_concept + loss_neg_concept
+    ##############
+
+    batch_logits.append(logits_pos_concepts.flatten())
+    batch_labels.append(labels_pos_concepts.flatten())
+
+    batch_logits.append(logits_neg_concepts.flatten())
+    batch_labels.append(labels_neg_concepts.flatten())
+
+    return total_loss, batch_logits, batch_labels

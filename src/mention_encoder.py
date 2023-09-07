@@ -376,7 +376,7 @@ def prepare_data_and_models(config):
 def train(config, param_dict):
     model = param_dict["model"]
     scheduler = param_dict["scheduler"]
-    optimizer = param_dict["scheduler"]
+    optimizer = param_dict["scheduler"]  #######################
 
     train_dataset = param_dict["train_dataset"]
     train_dataloader = param_dict["train_dataloader"]
