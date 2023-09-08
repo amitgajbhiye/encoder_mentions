@@ -14,7 +14,9 @@
         "hf_checkpoint_name": "bert-large-uncased",
         "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
         "tau": 0.05,
-        "use_hard_pair": false
+        "use_hard_pair": false,
+        "run_mode": "train"
+
     },
     "training_params": {
         "load_pretrained": false,

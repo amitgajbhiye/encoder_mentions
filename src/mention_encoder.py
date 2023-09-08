@@ -394,6 +394,8 @@ def train(config, param_dict):
         patience=patience_early_stopping, verbose=True, path=model_file, delta=1e-10
     )
 
+    log.info(f"model_name_file : {model_file}")
+
     pretrained_con_embeds_path = training_params["pretrained_con_embeds_path"]
     with open(pretrained_con_embeds_path, "rb") as embed_pkl:
         pretrained_con_embeds_dict = pickle.load(embed_pkl)
@@ -485,7 +487,8 @@ def train(config, param_dict):
             early_stopping(val_loss, model)
 
         if early_stopping.early_stop:
-            logging.info("Early stopping. Model trained")
+            log.info("Early stopping. Model trained")
+            log.info(f"Trained Model is saved at ; {model_file}")
             break
 
     torch.cuda.empty_cache()

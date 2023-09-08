@@ -23,10 +23,6 @@ from transformers import (
     BertForMaskedLM,
     BertModel,
     BertTokenizer,
-    DebertaV2Model,
-    DebertaV2Tokenizer,
-    RobertaModel,
-    RobertaTokenizer,
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
 )
@@ -44,24 +40,6 @@ CLASSES = {
         BertForMaskedLM,
         BertTokenizer,
         103,
-    ),
-    "roberta-base": (
-        RobertaModel,
-        "",
-        RobertaTokenizer,
-        50264,
-    ),
-    "roberta-large": (
-        RobertaModel,
-        "",
-        RobertaTokenizer,
-        50264,
-    ),
-    "deberta-v3-large": (
-        DebertaV2Model,
-        "",
-        DebertaV2Tokenizer,
-        128000,
     ),
 }
 
@@ -84,13 +62,10 @@ def set_logger(config):
     )
 
 
-log = logging.getLogger(__name__)
-
-
 class DatasetConceptSentence(Dataset):
     def __init__(self, concept_sent_file, dataset_params):
         if os.path.isfile(concept_sent_file):
-            log.info(f"Supplied Concept Property File is a Path : {concept_sent_file}")
+            log.info(f"Supplied Concept Sentence File is a Path : {concept_sent_file}")
             log.info(f"Loading into Dataframe ... ")
             self.data_df = pd.read_csv(
                 concept_sent_file,
@@ -192,19 +167,17 @@ class ModelDefinitionEncoder(nn.Module):
         self.hf_model_path = model_params["hf_model_path"]
 
         _, model_class, _, self.mask_token_id = CLASSES[self.hf_checkpoint_name]
-
-        log.info(f"model_class : {model_class}")
-
         self.encoder = model_class.from_pretrained(
             self.hf_model_path, output_hidden_states=True
         )
 
         self.run_mode = model_params["run_mode"]
-
         if self.run_mode == "train":
             self.miner = miners.MultiSimilarityMiner()
             self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
             self.use_hard_pair = model_params["use_hard_pair"]
+
+        log.info(f"model_class : {model_class}")
 
     def forward(
         self,
@@ -241,8 +214,6 @@ class ModelDefinitionEncoder(nn.Module):
             emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
             print(f"emb_all :{emb_all.shape}", flush=True)
 
-            if labels is None:
-                labels = torch.arange(mask_vectors.size(0))
             labels = torch.cat([labels, labels], dim=0)
             print(f"labels :{labels.shape}", flush=True)
 
@@ -323,12 +294,11 @@ def prepare_data_and_models(config):
         log.info(f"Validation File is Empty.")
         val_dataloader = None
 
-    log.info(f"Load Pretrained : {load_pretrained}")
-    log.info(f"Pretrained Model Path : {pretrained_model_path}")
-
-    # Creating Model
+    ########### Creating Model ###########
     model = ModelDefinitionEncoder(model_params=model_params)
 
+    log.info(f"Load Pretrained : {load_pretrained}")
+    log.info(f"Pretrained Model Path : {pretrained_model_path}")
     if load_pretrained:
         log.info(f"load_pretrained is : {load_pretrained}")
         log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
@@ -360,11 +330,12 @@ def prepare_data_and_models(config):
             int(len(train_dataloader) * max_epochs),
             num_cycles=1.5,
         )
+    log.info(f"lr_scheduler: {scheduler}")
 
     return {
         "model": model,
         "scheduler": scheduler,
-        "optimizer": scheduler,
+        "optimizer": optimizer,
         "train_dataset": train_dataset,
         "train_dataloader": train_dataloader,
         "val_dataset": val_dataset,
@@ -375,7 +346,7 @@ def prepare_data_and_models(config):
 def train(config, param_dict):
     model = param_dict["model"]
     scheduler = param_dict["scheduler"]
-    optimizer = param_dict["scheduler"]
+    optimizer = param_dict["optimizer"]
 
     train_dataset = param_dict["train_dataset"]
     train_dataloader = param_dict["train_dataloader"]
@@ -402,17 +373,21 @@ def train(config, param_dict):
 
     for epoch in trange(max_epochs, desc="Epoch"):
         log.info("Epoch {:} of {:}".format(epoch, max_epochs))
-        train_loss = 0
+        train_loss = 0.0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
-            # print(f"Batch : {batch}", flush=True)
             print(flush=True)
-            print(f"Batch['concept']: {batch['concept']}", flush=True)
-            print(f"Batch['sent']: {batch['sent']}", flush=True)
+            print(
+                f"batch['concept']: {len(batch['concept'])}, {batch['concept']}",
+                flush=True,
+            )
+            print(f"batch['sent']: {len(batch['sent'])}, {batch['sent']}", flush=True)
 
             pretrained_con_embeds = torch.tensor(
                 [pretrained_con_embeds_dict[con] for con in batch["concept"]]
             ).to(device)
+
+            print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
 
             ids_dict = train_dataset.get_sent_ids(batch)
             ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
@@ -443,11 +418,17 @@ def train(config, param_dict):
 
         # Validation
         model.eval()
-        val_loss = 0
+        val_loss = 0.0
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
             print(flush=True)
-            print(f"Validation Batch['concept']: {batch['concept']}", flush=True)
-            print(f"Validation Batch['sent']: {batch['sent']}", flush=True)
+            print(
+                f"validation_batch['concept']: {len(batch['concept'])},{batch['concept']}",
+                flush=True,
+            )
+            print(
+                f"validation_batch['sent']: {len(batch['sent'])}, {batch['sent']}",
+                flush=True,
+            )
 
             pretrained_con_embeds = torch.tensor(
                 [pretrained_con_embeds_dict[con] for con in batch["concept"]]
@@ -466,6 +447,7 @@ def train(config, param_dict):
             val_loss += loss.item()
 
             del ids_dict
+            del loss
             gc.collect()
 
         log.info(f"val_step: {step}")
@@ -486,7 +468,8 @@ def train(config, param_dict):
             early_stopping(val_loss, model)
 
         if early_stopping.early_stop:
-            logging.info("Early stopping. Model trained")
+            log.info("Early stopping. Model trained")
+            log.info(f"Trained Model is saved at ; {model_file}")
             break
 
     torch.cuda.empty_cache()
@@ -516,3 +499,5 @@ if __name__ == "__main__":
     param_dict = prepare_data_and_models(config=config)
 
     train(config=config, param_dict=param_dict)
+else:
+    log = logging.getLogger(__name__)
