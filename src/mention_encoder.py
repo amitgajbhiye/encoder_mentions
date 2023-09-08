@@ -95,7 +95,7 @@ class DatasetConceptSentence(Dataset):
         # df["col_3"] = df.apply(lambda x: f(x.col_1, x.col_2), axis=1)
 
         self.data_df["whole_word_present"] = self.data_df.apply(
-            lambda x: self.check_whole_word_in_sent(x.concept, x.sent), axix=1
+            lambda x: self.check_whole_word_in_sent(x.concept, x.sent), axis=1
         )
 
         print(f"whole_word_present_columns")
