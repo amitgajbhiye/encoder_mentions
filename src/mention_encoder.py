@@ -150,7 +150,7 @@ class DatasetConceptSentence(Dataset):
             metacharacters = r"[]().*+?|{}^$\\"
             return [char for char in word if char in metacharacters]
 
-        if has_metacharacters(concept=concept):
+        if has_metacharacters(word=concept):
             raw_search_string = re.escape(concept)
         else:
             raw_search_string = r"\b" + concept + r"\b"
