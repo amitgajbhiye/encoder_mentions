@@ -92,6 +92,15 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
+        # df["col_3"] = df.apply(lambda x: f(x.col_1, x.col_2), axis=1)
+
+        self.data_df["whole_word_present"] = self.data_df.apply(
+            lambda x: self.check_whole_word_in_sent(x.concept, x.sent), axix=1
+        )
+
+        print(f"whole_word_present_columns")
+        print(self.data_df)
+
         self.data_df = self.data_df.sample(frac=1)
         self.data_df.reset_index(inplace=True, drop=True)
         self.unique_cons = self.data_df["concept"].unique()
@@ -136,6 +145,23 @@ class DatasetConceptSentence(Dataset):
 
     #     return mask_sent
 
+    def check_whole_word_in_sent(self, concept, sent):
+        def has_metacharacters(word):
+            metacharacters = r"[]().*+?|{}^$\\"
+            return [char for char in word if char in metacharacters]
+
+        if has_metacharacters(concept=concept):
+            raw_search_string = re.escape(concept)
+        else:
+            raw_search_string = r"\b" + concept + r"\b"
+
+        srch_output = re.search(raw_search_string, sent, flags=re.IGNORECASE)
+
+        if srch_output:
+            return "yes"
+        else:
+            return "no"
+
     def mask_word_in_sent(self, search_string, input_string):
         def has_metacharacters(word):
             metacharacters = r"[]().*+?|{}^$\\"
@@ -147,21 +173,12 @@ class DatasetConceptSentence(Dataset):
             raw_search_string = r"\b" + search_string + r"\b"
 
         srch_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
-        no_match_was_found = srch_output is None
 
-        if no_match_was_found:
-            print(flush=True)
-            print(f"******* concept_not_found ******", flush=True)
-            print(f"concept : {search_string}", flush=True)
-            print(f"sentence : {input_string}", flush=True)
-            raise Exception("Concept is not in the Sentence")
-        else:
-            start_idx = srch_output.start()
-            end_idx = srch_output.end()
-            mask_sent = (
-                input_string[:start_idx] + self.mask_token + input_string[end_idx:]
-            )
-            return mask_sent
+        start_idx = srch_output.start()
+        end_idx = srch_output.end()
+        mask_sent = input_string[:start_idx] + self.mask_token + input_string[end_idx:]
+
+        return mask_sent
 
     def get_sent_ids(self, batch):
         sents = [
