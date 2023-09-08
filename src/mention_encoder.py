@@ -23,10 +23,6 @@ from transformers import (
     BertForMaskedLM,
     BertModel,
     BertTokenizer,
-    DebertaV2Model,
-    DebertaV2Tokenizer,
-    RobertaModel,
-    RobertaTokenizer,
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
 )
@@ -44,24 +40,6 @@ CLASSES = {
         BertForMaskedLM,
         BertTokenizer,
         103,
-    ),
-    "roberta-base": (
-        RobertaModel,
-        "",
-        RobertaTokenizer,
-        50264,
-    ),
-    "roberta-large": (
-        RobertaModel,
-        "",
-        RobertaTokenizer,
-        50264,
-    ),
-    "deberta-v3-large": (
-        DebertaV2Model,
-        "",
-        DebertaV2Tokenizer,
-        128000,
     ),
 }
 
@@ -84,7 +62,7 @@ def set_logger(config):
     )
 
 
-log = logging.getLogger(__name__)
+# log = logging.getLogger(__name__)
 
 
 class DatasetConceptSentence(Dataset):
@@ -155,11 +133,38 @@ class DatasetConceptSentence(Dataset):
 
         return {"concept": concept, "sent": sent, "labels": labels}
 
-    def mask_word_in_sent(self, con, sent):
-        srch = re.search(con, sent, re.IGNORECASE)
-        mask_sent = sent.replace(sent[srch.start() : srch.end()], self.mask_token, 1)
+    # def mask_word_in_sent(self, con, sent):
+    #     srch = re.search(con, sent, re.IGNORECASE)
+    #     mask_sent = sent.replace(sent[srch.start() : srch.end()], self.mask_token, 1)
 
-        return mask_sent
+    #     return mask_sent
+
+    def mask_word_in_sent(self, search_string, input_string):
+        def has_metacharacters(word):
+            metacharacters = r"[]().*+?|{}^$\\"
+            return [char for char in word if char in metacharacters]
+
+        if has_metacharacters(word=search_string):
+            raw_search_string = re.escape(search_string)
+        else:
+            raw_search_string = r"\b" + search_string + r"\b"
+
+        srch_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
+        no_match_was_found = srch_output is None
+
+        if no_match_was_found:
+            print(flush=True)
+            print(f"******* concept_not_found ******", flush=True)
+            print(f"concept : {search_string}", flush=True)
+            print(f"sentence : {input_string}", flush=True)
+            raise Exception("Concept is not in the Sentence")
+        else:
+            start_idx = srch_output.start()
+            end_idx = srch_output.end()
+            mask_sent = (
+                input_string[:start_idx] + self.mask_token + input_string[end_idx:]
+            )
+            return mask_sent
 
     def get_sent_ids(self, batch):
         sents = [
@@ -193,9 +198,6 @@ class ModelMentionEncoder(nn.Module):
         self.hf_model_path = model_params["hf_model_path"]
 
         _, model_class, _, self.mask_token_id = CLASSES[self.hf_checkpoint_name]
-
-        log.info(f"model_class : {model_class}")
-
         self.encoder = model_class.from_pretrained(
             self.hf_model_path, output_hidden_states=True
         )
@@ -203,8 +205,10 @@ class ModelMentionEncoder(nn.Module):
         self.run_mode = model_params["run_mode"]
         if self.run_mode == "train":
             self.miner = miners.MultiSimilarityMiner()
-            self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
             self.use_hard_pair = model_params["use_hard_pair"]
+            self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
+
+        log.info(f"model_class : {model_class}")
 
     def forward(
         self,
@@ -246,8 +250,6 @@ class ModelMentionEncoder(nn.Module):
             emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
             print(f"emb_all :{emb_all.shape}", flush=True)
 
-            if labels is None:
-                labels = torch.arange(mask_vectors.size(0))
             labels = torch.cat([labels, labels], dim=0)
             print(f"labels :{labels.shape}: {labels}", flush=True, end="\n")
 
@@ -324,12 +326,11 @@ def prepare_data_and_models(config):
         log.info(f"Validation File is Empty.")
         val_dataloader = None
 
-    log.info(f"Load Pretrained : {load_pretrained}")
-    log.info(f"Pretrained Model Path : {pretrained_model_path}")
-
-    # Creating Model
+    ########### Creating Model ###########
     model = ModelMentionEncoder(model_params=model_params)
 
+    log.info(f"Load Pretrained : {load_pretrained}")
+    log.info(f"Pretrained Model Path : {pretrained_model_path}")
     if load_pretrained:
         log.info(f"load_pretrained is : {load_pretrained}")
         log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
@@ -340,7 +341,7 @@ def prepare_data_and_models(config):
     if torch.cuda.is_available():
         n_gpu = torch.cuda.device_count()
         if n_gpu > 1:
-            logging.info(f"using multiple GPUs: {n_gpu}")
+            logging.info(f"using_multiple_GPUs: {n_gpu}")
             model = nn.DataParallel(model)
         model.to(device=device)
 
@@ -361,11 +362,12 @@ def prepare_data_and_models(config):
             int(len(train_dataloader) * max_epochs),
             num_cycles=1.5,
         )
+    log.info(f"lr_scheduler: {scheduler}")
 
     return {
         "model": model,
         "scheduler": scheduler,
-        "optimizer": scheduler,
+        "optimizer": optimizer,
         "train_dataset": train_dataset,
         "train_dataloader": train_dataloader,
         "val_dataset": val_dataset,
@@ -376,7 +378,7 @@ def prepare_data_and_models(config):
 def train(config, param_dict):
     model = param_dict["model"]
     scheduler = param_dict["scheduler"]
-    optimizer = param_dict["scheduler"]  #######################
+    optimizer = param_dict["optimizer"]
 
     train_dataset = param_dict["train_dataset"]
     train_dataloader = param_dict["train_dataloader"]
@@ -401,11 +403,10 @@ def train(config, param_dict):
 
     for epoch in trange(max_epochs, desc="Epoch"):
         log.info("Epoch {:} of {:}".format(epoch, max_epochs))
-        train_loss = 0
+        train_loss = 0.0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             print(flush=True)
-            # print(f"Batch : {batch}", flush=True)
             print(
                 f"batch['concept']: {len(batch['concept'])}, {batch['concept']}",
                 flush=True,
@@ -415,6 +416,8 @@ def train(config, param_dict):
             pretrained_con_embeds = torch.tensor(
                 [pretrained_con_embeds_dict[con] for con in batch["concept"]]
             ).to(device)
+
+            print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
 
             ids_dict = train_dataset.get_sent_ids(batch)
             ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
@@ -445,7 +448,7 @@ def train(config, param_dict):
 
         # Validation
         model.eval()
-        val_loss = 0
+        val_loss = 0.0
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
             pretrained_con_embeds = torch.tensor(
                 [pretrained_con_embeds_dict[con] for con in batch["concept"]]
