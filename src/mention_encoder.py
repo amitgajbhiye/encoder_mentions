@@ -104,7 +104,7 @@ class DatasetConceptSentence(Dataset):
         print(f"self.data_df after removing non whole words")
         print(self.data_df)
 
-        no_whole_word_df = self.data_df[~self.data_df["whole_word_present"] == "yes"]
+        no_whole_word_df = self.data_df[self.data_df["whole_word_present"] == "no"]
         print("no_whole_word_df")
         print(no_whole_word_df)
 
