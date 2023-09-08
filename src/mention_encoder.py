@@ -92,21 +92,20 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
+        print(f"Initial self.data_df", flush=True)
+        print(self.data_df, flush=True)
+
         self.data_df["whole_word_present"] = self.data_df.apply(
             lambda x: self.check_whole_word_in_sent(x.concept, x.sent), axis=1
         )
 
-        print(f"whole_word_present_columns")
-        print(self.data_df)
+        no_whole_word_df = self.data_df[self.data_df["whole_word_present"] == "no"]
+        print("no_whole_word_df", flush=True)
+        print(no_whole_word_df, flush=True)
 
         self.data_df = self.data_df[self.data_df["whole_word_present"] == "yes"]
-
-        print(f"self.data_df after removing non whole words")
-        print(self.data_df)
-
-        no_whole_word_df = self.data_df[self.data_df["whole_word_present"] == "no"]
-        print("no_whole_word_df")
-        print(no_whole_word_df)
+        print(f"self.data_df after removing non whole words", flush=True)
+        print(self.data_df, flush=True)
 
         self.data_df = self.data_df.sample(frac=1)
         self.data_df.reset_index(inplace=True, drop=True)
