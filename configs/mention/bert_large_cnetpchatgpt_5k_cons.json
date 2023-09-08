@@ -26,7 +26,7 @@
         "lr": 2e-6,
         "max_epochs": 100,
         "warmup_ratio": 0,
-        "patience_early_stopping": 3,
+        "patience_early_stopping": 5,
         "save_dir": "trained_models/mention_enc",
         "model_name": "bert_large_cnetpchatgpt_5k_cons.pt",
         "weight_decay": 0.01
