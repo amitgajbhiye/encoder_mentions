@@ -92,14 +92,21 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
-        # df["col_3"] = df.apply(lambda x: f(x.col_1, x.col_2), axis=1)
-
         self.data_df["whole_word_present"] = self.data_df.apply(
             lambda x: self.check_whole_word_in_sent(x.concept, x.sent), axis=1
         )
 
         print(f"whole_word_present_columns")
         print(self.data_df)
+
+        self.data_df = self.data_df[self.data_df["whole_word_present"] == "yes"]
+
+        print(f"self.data_df after removing non whole words")
+        print(self.data_df)
+
+        no_whole_word_df = self.data_df[~self.data_df["whole_word_present"] == "yes"]
+        print("no_whole_word_df")
+        print(no_whole_word_df)
 
         self.data_df = self.data_df.sample(frac=1)
         self.data_df.reset_index(inplace=True, drop=True)
@@ -111,6 +118,8 @@ class DatasetConceptSentence(Dataset):
         for lbl, con in enumerate(self.unique_cons, start=1):
             self.data_df.loc[con, "labels"] = lbl
         self.data_df.reset_index(inplace=True, drop=True)
+
+        self.data_df = self.data_df[["concept", "sent", "labels"]]
 
         log.info("final_input_df")
         log.info(self.data_df.head(n=100))
