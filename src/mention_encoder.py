@@ -62,9 +62,6 @@ def set_logger(config):
     )
 
 
-# log = logging.getLogger(__name__)
-
-
 class DatasetConceptSentence(Dataset):
     def __init__(self, concept_sent_file, dataset_params):
         if isinstance(concept_sent_file, pd.DataFrame):
@@ -518,3 +515,5 @@ if __name__ == "__main__":
     param_dict = prepare_data_and_models(config=config)
 
     train(config=config, param_dict=param_dict)
+else:
+    log = logging.getLogger(__name__)
