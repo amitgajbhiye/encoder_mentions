@@ -20,7 +20,7 @@
     "training_params": {
         "load_pretrained": false,
         "pretrained_model_path": null,
-        "batch_size": 32,
+        "batch_size": 16,
         "lr": 2e-6,
         "lr_schedule":"cosine",
         "max_epochs": 100,
