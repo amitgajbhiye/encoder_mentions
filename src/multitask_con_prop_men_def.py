@@ -116,17 +116,17 @@ class DatasetConceptPropDefMen(Dataset):
         print(self.data_df.head(n=100))
 
         self.hf_tokenizer_name = dataset_params["hf_tokenizer_name"]
-        # _, _, tokenizer_class, _ = CLASSES[self.hf_tokenizer_name]
+        _, _, tokenizer_class, _ = CLASSES[self.hf_tokenizer_name]
 
-        # if dataset_params["hf_tokenizer_path"]:
-        #     self.hf_tokenizer_path = dataset_params["hf_tokenizer_path"]
-        #     self.tokenizer = tokenizer_class.from_pretrained(self.hf_tokenizer_path)
-        # else:
-        #     self.tokenizer = AutoTokenizer.from_pretrained(self.hf_tokenizer_name)
+        if dataset_params["hf_tokenizer_path"]:
+            self.hf_tokenizer_path = dataset_params["hf_tokenizer_path"]
+            self.tokenizer = tokenizer_class.from_pretrained(self.hf_tokenizer_path)
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.hf_tokenizer_name)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.hf_tokenizer_name)
+        # self.tokenizer = AutoTokenizer.from_pretrained(self.hf_tokenizer_name)
 
-        # log.info(f"tokenizer_class : {tokenizer_class}")
+        log.info(f"tokenizer_class : {tokenizer_class}")
 
         self.max_len = dataset_params["max_len"]
 
@@ -562,6 +562,7 @@ def prepare_data_and_models(config):
 
     # Creating Model
     model = JointConceptPropDefMen(model_params=model_params)
+    model.to(device=device)
 
     if load_pretrained:
         log.info(f"load_pretrained is : {load_pretrained}")
@@ -570,12 +571,12 @@ def prepare_data_and_models(config):
 
         log.info(f"Loaded Pretrained Model")
 
-    if torch.cuda.is_available():
-        n_gpu = torch.cuda.device_count()
-        if n_gpu > 1:
-            logging.info(f"using multiple GPUs: {n_gpu}")
-            model = nn.DataParallel(model)
-        model.to(device=device)
+    # if torch.cuda.is_available():
+    #     n_gpu = torch.cuda.device_count()
+    #     if n_gpu > 1:
+    #         logging.info(f"using multiple GPUs: {n_gpu}")
+    #         model = nn.DataParallel(model)
+    #     model.to(device=device)
 
     log.info(f"model_class : {model.__class__.__name__}")
 
