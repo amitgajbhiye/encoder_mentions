@@ -172,6 +172,12 @@ class ModelDefinitionEncoder(nn.Module):
         )
 
         self.run_mode = model_params["run_mode"]
+        assert self.run_mode in (
+            "train",
+            "test",
+            "inference",
+        ), f"Wrong run_mode: {self.run_mode}"
+
         if self.run_mode == "train":
             self.miner = miners.MultiSimilarityMiner()
             self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])

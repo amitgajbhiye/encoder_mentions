@@ -225,11 +225,18 @@ class ModelMentionEncoder(nn.Module):
         )
 
         self.run_mode = model_params["run_mode"]
+        assert self.run_mode in (
+            "train",
+            "test",
+            "inference",
+        ), f"Wrong run_mode: {self.run_mode}"
+
         if self.run_mode == "train":
             self.miner = miners.MultiSimilarityMiner()
             self.use_hard_pair = model_params["use_hard_pair"]
             self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
 
+        log.info(f"log.info: {self.run_mode}")
         log.info(f"model_class : {model_class}")
 
     def forward(
