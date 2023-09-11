@@ -2,8 +2,8 @@
 
 #SBATCH --job-name=ccMenEnc
 
-#SBATCH --output=logs/mention_enc/out_bert_large_cnetpchatgpt_5k_cons.txt
-#SBATCH --error=logs/mention_enc/err_bert_large_cnetpchatgpt_5k_cons.txt
+#SBATCH --output=logs/mention_enc/out_small_data_bert_large_cnetpchatgpt_5k_cons.txt
+#SBATCH --error=logs/mention_enc/err_small_data_bert_large_cnetpchatgpt_5k_cons.txt
 
 #SBATCH --tasks-per-node=5
 #SBATCH --ntasks=5
@@ -13,7 +13,7 @@
 #SBATCH --gres=gpu:2
 
 #SBATCH --mem=16G
-#SBATCH -t 2-00:00:00
+#SBATCH -t 0-03:00:00
 
 conda activate venv
 
