@@ -75,6 +75,7 @@ class DatasetConceptPropDefMen(Dataset):
                     "concept": str,
                     "sent2": str,
                     "sent2_type": str,
+                    "sent2_len": int,
                 },
             )
         elif os.path.isfile(con_prop_men_def_file):
@@ -86,11 +87,12 @@ class DatasetConceptPropDefMen(Dataset):
                 con_prop_men_def_file,
                 sep="\t",
                 header=None,
-                names=["concept", "sent2", "sent2_type"],
+                names=["concept", "sent2", "sent2_type", "sent2_len"],
                 dtype={
                     "concept": str,
                     "sent2": str,
                     "sent2_type": str,
+                    "sent2_len": int,
                 },
             )
             log.info(f"loaded_dataframe: {self.data_df}")
@@ -123,8 +125,6 @@ class DatasetConceptPropDefMen(Dataset):
             self.tokenizer = tokenizer_class.from_pretrained(self.hf_tokenizer_path)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(self.hf_tokenizer_name)
-
-        # self.tokenizer = AutoTokenizer.from_pretrained(self.hf_tokenizer_name)
 
         log.info(f"tokenizer_class : {tokenizer_class}")
 
