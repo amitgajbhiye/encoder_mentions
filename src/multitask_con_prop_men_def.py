@@ -438,7 +438,9 @@ class JointConceptPropDefMen(nn.Module):
             # Contrastive loss
             con_def_all_embed = torch.cat([def_masks, con_def_masks], dim=0)
 
-            con_defs_labels = input_ids_and_labels["con_defs_labels"]
+            con_defs_labels = torch.tensor(input_ids_and_labels["con_defs_labels"]).to(
+                device=device
+            )
             con_defs_labels = torch.cat([con_defs_labels, con_defs_labels], dim=0)
 
             loss_contra_con_def = self.contrastive_loss_fn(
@@ -471,7 +473,9 @@ class JointConceptPropDefMen(nn.Module):
             # Contrastive loss
             con_men_all_embed = torch.cat([men_masks, con_men_masks], dim=0)
 
-            con_mens_labels = input_ids_and_labels["con_mens_labels"]
+            con_mens_labels = torch.tensor(input_ids_and_labels["con_mens_labels"]).to(
+                device=device
+            )
             con_mens_labels = torch.cat([con_mens_labels, con_mens_labels], dim=0)
 
             loss_contra_con_men = self.contrastive_loss_fn(
