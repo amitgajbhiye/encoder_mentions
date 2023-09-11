@@ -12,7 +12,7 @@
 #SBATCH -p gpu_v100
 #SBATCH --gres=gpu:2
 
-#SBATCH --mem=16G
+#SBATCH --mem=18G
 #SBATCH -t 2-00:00:00
 
 conda activate venv
