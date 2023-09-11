@@ -461,6 +461,10 @@ def train(config, param_dict):
 
             train_loss += loss.item()
 
+            log.info(
+                f"step of total_steps: {step}/{len(train_dataloader)} step_loss: {loss}"
+            )
+
             del ids_dict
             del pretrained_con_embeds
             del loss
