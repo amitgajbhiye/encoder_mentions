@@ -92,8 +92,6 @@ class DatasetConceptSentence(Dataset):
         else:
             raise TypeError(f"Input file type is not correct !!! - {concept_sent_file}")
 
-        self.data_df = self.data_df.sample(n=200000, random_state=42)
-
         print(f"Initial self.data_df", flush=True)
         print(self.data_df, flush=True)
 
