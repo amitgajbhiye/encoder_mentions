@@ -1,7 +1,7 @@
 import gc
 import logging
 import os
-import pickle
+
 import re
 import sys
 import time
@@ -23,10 +23,6 @@ from transformers import (
     BertForMaskedLM,
     BertModel,
     BertTokenizer,
-    DebertaV2Model,
-    DebertaV2Tokenizer,
-    RobertaModel,
-    RobertaTokenizer,
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
     AutoTokenizer,
@@ -45,24 +41,6 @@ CLASSES = {
         BertForMaskedLM,
         BertTokenizer,
         103,
-    ),
-    "roberta-base": (
-        RobertaModel,
-        "",
-        RobertaTokenizer,
-        50264,
-    ),
-    "roberta-large": (
-        RobertaModel,
-        "",
-        RobertaTokenizer,
-        50264,
-    ),
-    "deberta-v3-large": (
-        DebertaV2Model,
-        "",
-        DebertaV2Tokenizer,
-        128000,
     ),
 }
 
@@ -83,9 +61,6 @@ def set_logger(config):
         filemode="w",
         format="%(asctime)s : %(name)s : %(levelname)s - %(message)s",
     )
-
-
-log = logging.getLogger(__name__)
 
 
 class DatasetConceptPropDefMen(Dataset):
@@ -263,10 +238,21 @@ class DatasetConceptPropDefMen(Dataset):
         print(f"mens: {con_mens}, ++++, {mens}")
 
         # print (f"concept_encodings: {len(concept_prompt)}, {concept_encodings['input_ids'].shape}")
+        # train_input_ids_and_labels = {
+        #     #     key: value.to(device)
+        #     #     for key, value in train_input_ids_and_labels.items()
+        #     # }
 
         if props:
             property_encodings = get_encodings(sents=props)
             con_prop_encodings = get_encodings(sents=con_prop)
+
+            property_encodings = {
+                key: value.to(device) for key, value in property_encodings.items()
+            }
+            con_prop_encodings = {
+                key: value.to(device) for key, value in con_prop_encodings.items()
+            }
 
             print(
                 f"con_prop_encodings: {len(con_prop)}, {con_prop_encodings['input_ids'].shape}"
@@ -282,6 +268,13 @@ class DatasetConceptPropDefMen(Dataset):
             definition_encodings = get_encodings(sents=defs)
             con_def_encodings = get_encodings(sents=con_defs)
 
+            definition_encodings = {
+                key: value.to(device) for key, value in definition_encodings.items()
+            }
+            con_def_encodings = {
+                key: value.to(device) for key, value in con_def_encodings.items()
+            }
+
             print(
                 f"con_def_encodings: {len(con_defs)}, {con_def_encodings['input_ids'].shape}"
             )
@@ -295,6 +288,13 @@ class DatasetConceptPropDefMen(Dataset):
         if mens:
             mention_encodings = get_encodings(sents=mens)
             con_mens_encodings = get_encodings(sents=con_mens)
+
+            mention_encodings = {
+                key: value.to(device) for key, value in mention_encodings.items()
+            }
+            con_mens_encodings = {
+                key: value.to(device) for key, value in con_mens_encodings.items()
+            }
 
             print(
                 f"con_mens_encodings: {len(con_mens)}, {con_mens_encodings['input_ids'].shape}"
@@ -617,10 +617,10 @@ def train(config, param_dict):
 
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             train_input_ids_and_labels = train_dataset.get_ids(batch)
-            train_input_ids_and_labels = {
-                key: value.to(device)
-                for key, value in train_input_ids_and_labels.items()
-            }
+            # train_input_ids_and_labels = {
+            #     key: value.to(device)
+            #     for key, value in train_input_ids_and_labels.items()
+            # }
 
             model.zero_grad()
             running_train_loss = model(input_ids_and_labels=train_input_ids_and_labels)
@@ -634,6 +634,11 @@ def train(config, param_dict):
             scheduler.step()
 
             train_loss += running_train_loss.item()
+
+            if (step + 1) % 20 == 0:
+                log.info(
+                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+                )
 
             del train_input_ids_and_labels
             del loss
@@ -713,3 +718,5 @@ if __name__ == "__main__":
     param_dict = prepare_data_and_models(config=config)
 
     train(config=config, param_dict=param_dict)
+else:
+    log = logging.getLogger(__name__)

@@ -411,6 +411,11 @@ def train(config, param_dict):
 
             train_loss += loss.item()
 
+            if (step + 1) % 100 == 0:
+                log.info(
+                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+                )
+
             del ids_dict
             del pretrained_con_embeds
             del loss
