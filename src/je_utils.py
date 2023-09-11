@@ -72,6 +72,18 @@ def calculate_inbatch_cross_entropy_loss(
         logits_pos_concepts, dtype=torch.float32, device=device
     )
 
+    print(flush=True)
+    print(f"++++++++++ in_calculate_inbatch_cross_entropy_loss ++++++++++", flush=True)
+    print(
+        f"logits_pos_concepts: {logits_pos_concepts.shape, logits_pos_concepts}",
+        flush=True,
+    )
+    print(
+        f"labels_pos_concepts: {labels_pos_concepts.shape, labels_pos_concepts}",
+        flush=True,
+    )
+    print(flush=True)
+
     ##############
     loss_pos_concept = loss_fn(logits_pos_concepts, labels_pos_concepts)
     ##############
