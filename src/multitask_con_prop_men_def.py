@@ -410,7 +410,7 @@ class JointConceptPropDefMen(nn.Module):
             if input_ids_and_labels["property_encodings"]["input_ids"].shape[0] == 1:
                 loss_cross_con_prop = 0.0
             else:
-                loss_cross_con_prop = calculate_inbatch_cross_entropy_loss(
+                loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
                     con_prop_masks, prop_masks, self.contrastive_loss_fn, device
                 )
 
