@@ -99,7 +99,7 @@ class DatasetConceptPropDefMen(Dataset):
                 f"Input file type is not correct !!! - {con_prop_men_def_file}"
             )
 
-        self.data_df = self.data_df.sample(frac=0.001)  #############################
+        self.data_df = self.data_df.sample(frac=0.005)  #############################
         self.data_df.reset_index(inplace=True, drop=True)
         self.unique_cons = self.data_df["concept"].unique()
 
@@ -380,6 +380,13 @@ class JointConceptPropDefMen(nn.Module):
         #     "con_mens_labels": con_mens_labels,
         # }
 
+        print("+++++++++++++++++++++++++++++++++", flush=True)
+        print(
+            f'input_ids_and_labels["property_encodings"]["input_ids"].shape :{input_ids_and_labels["property_encodings"]["input_ids"].shape}',
+            flush=True,
+        )
+        print("+++++++++++++++++++++++++++++++++", flush=True)
+
         if input_ids_and_labels["property_encodings"]:
             con_prop_output = self.concept_encoder(
                 **input_ids_and_labels["con_prop_encodings"]
@@ -400,12 +407,14 @@ class JointConceptPropDefMen(nn.Module):
             )
 
             ### Cross Entropy Loss
-            if input_ids_and_labels["property_encodings"].shape[0] == 1:
+            if input_ids_and_labels["property_encodings"]["input_ids"].shape[0] == 1:
                 loss_cross_con_prop = 0.0
             else:
                 loss_cross_con_prop = calculate_inbatch_cross_entropy_loss(
                     con_prop_masks, prop_masks, self.contrastive_loss_fn, device
                 )
+
+            print(f"loss_cross_con_prop: {loss_cross_con_prop}", flush=True)
 
         if input_ids_and_labels["definition_encodings"]:
             con_def_output = self.concept_encoder(
@@ -438,6 +447,8 @@ class JointConceptPropDefMen(nn.Module):
         else:
             loss_contra_con_def = 0.0
 
+        print(f"loss_contra_con_def: {loss_contra_con_def}", flush=True)
+
         if input_ids_and_labels["mention_encodings"]:
             con_men_output = self.concept_encoder(
                 **input_ids_and_labels["con_mens_encodings"]
@@ -469,7 +480,11 @@ class JointConceptPropDefMen(nn.Module):
         else:
             loss_contra_con_men = 0.0
 
+        print(f"loss_contra_con_men: {loss_contra_con_men}", flush=True)
+
         loss = loss_cross_con_prop + loss_contra_con_def + loss_contra_con_men
+
+        print(f"total_loss: {loss}", flush=True)
 
         return loss
 
