@@ -233,15 +233,14 @@ class DatasetConceptPropDefMen(Dataset):
                 con_mens_labels.append(lbl)
 
         print(f"In batch")
-        print(f"props: {con_prop}, ++++, {props}")
-        print(f"defs: {con_defs}, ++++, {defs}")
-        print(f"mens: {con_mens}, ++++, {mens}")
+        print(f"props: {len(con_prop)}, ++++ {con_prop}, ++++, {props}", flush=True)
+        print(flush=True)
+        print(f"defs: {len(con_defs)}, ++++, {con_defs}, ++++, {defs}", flush=True)
+        print(flush=True)
+        print(f"mens: {len(con_mens)}, ++++, {con_mens}, ++++, {mens}", flush=True)
+        print(flush=True)
 
         # print (f"concept_encodings: {len(concept_prompt)}, {concept_encodings['input_ids'].shape}")
-        # train_input_ids_and_labels = {
-        #     #     key: value.to(device)
-        #     #     for key, value in train_input_ids_and_labels.items()
-        #     # }
 
         if props:
             property_encodings = get_encodings(sents=props)
