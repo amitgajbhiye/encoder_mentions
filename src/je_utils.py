@@ -99,6 +99,8 @@ def calculate_inbatch_cross_entropy_loss(
     logits_neg_concepts.fill_diagonal_(0.0)
     logits_neg_concepts = logits_neg_concepts.flatten()
 
+    logits_neg_concepts = logits_neg_concepts.reshape(logits_neg_concepts.shape[0], -1)
+
     # labels_neg_concepts = torch.zeros_like(
     #     logits_neg_concepts, dtype=torch.float32, device=device
     # )
