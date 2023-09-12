@@ -208,6 +208,7 @@ if __name__ == "__main__":
             domain_data_df = data_df[data_df["domain"] == domain_id]
         else:
             print(f"*** Testing on All Domains ***")
+            domain_data_df = data_df
 
         print(f"num_test_instance : {len(domain_data_df)}", flush=True)
 
