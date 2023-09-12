@@ -1,5 +1,5 @@
 {
-    "experiment_name": "new2_mscgcnetpchatgpt_entropy_bert_large",
+    "experiment_name": "propertycontra_bert_large_cnepchatgpt_model",
     "log_dirctory": "coda21_evaluation",
     "dataset_params": {
         "dataset_name": "coda21",
@@ -14,9 +14,9 @@
     },
     "inference_params": {
     	"data_folder": "data/coda21",
-    	"sentence_model": "new2_mscgcnetpchatgpt_entropy_bert_large",
+    	"sentence_model": "propertycontra_bert_large_cnepchatgpt_model",
     	"save_dir": "output",
-        "pretrained_mention_model_path": "trained_models/mention_enc/mention_enc_bert_large_mscgcnetpchatgpt_pt_entropy_model_cnetpchatgpt_5k_cons.pt",
-        "pretrained_definition_model_path": "trained_models/definition_encoder/definition_enc_bert_large_mscgcnetpchatgpt_pt_entropy_model_wordnet_codwoe.pt"        
+        "pretrained_mention_model_path": "trained_models/mention_enc/propertycontra_bert_large_cnetpchatgpt_5k_cons.pt",
+        "pretrained_definition_model_path": "trained_models/definition_encoder/propertycontra_bert_large_wordnet_codwoe_definition_encoder.pt"
     }
 }

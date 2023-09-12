@@ -1,5 +1,5 @@
 {
-    "experiment_name": "new_cnetpchatgpt_entropy_bert_large",
+    "experiment_name": "conceptcontra_bert_large_cnepchatgpt_model",
     "log_dirctory": "coda21_evaluation",
     "dataset_params": {
         "dataset_name": "coda21",
@@ -14,9 +14,9 @@
     },
     "inference_params": {
     	"data_folder": "data/coda21",
-    	"sentence_model": "new_cnetpchatgpt_entropy_bert_large",
+    	"sentence_model": "conceptcontra_bert_large_cnepchatgpt_model",
     	"save_dir": "output",
-        "pretrained_mention_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
-        "pretrained_definition_model_path": "trained_models/definition_encoder/bert_large_wordnet_codwoe.pt"        
+        "pretrained_mention_model_path": "trained_models/mention_enc/conceptcontra_bert_large_cnetpchatgpt_5k_cons.pt",
+        "pretrained_definition_model_path": "trained_models/definition_encoder/conceptcontra_bert_large_wordnet_codwoe_definition_encoder.pt"
     }
 }
