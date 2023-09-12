@@ -148,16 +148,15 @@ if __name__ == "__main__":
     print("The model is run with the following configuration", flush=True)
     print(f"\n {config} \n", flush=True)
 
-    inference_params = config["inference_params"]
+    ######## Creating Model ########
+    un_wictsv = UnsupervisedWicTsv(config=config)
 
+    inference_params = config["inference_params"]
     batch_size = inference_params["batch_size"]
     wictsv_file = inference_params["wictsv_test_file"]
 
-    data = _read_tsv(wictsv_file)[1:]
-
-    data_df = pd.DataFrame.from_records(
-        data
-    )  # word idx context definition domain hypernym
+    data = _read_tsv(wictsv_file)[1:]  # word idx context definition domain hypernym
+    data_df = pd.DataFrame.from_records(data)
     data_df.rename(
         columns={
             0: "word",
@@ -169,102 +168,125 @@ if __name__ == "__main__":
         },
         inplace=True,
     )
+
     # Reading Labels
     if inference_params["label_file"]:
         label = np.array(_read_tsv(inference_params["label_file"])).flatten()
         label = np.array([1 if l == "T" else 0 for l in label], dtype=int)
-        print(f"label : {label}")
+
+        print(f"label : {label}", flush=True)
+
+        assert (
+            data_df.shape[0] == label.shape[0]
+        ), "Number of input records is not equal to labels"
 
         data_df["label"] = label
 
-    print(f"data_df : {data_df}", flush=True)
     print(f"data_df.columns : {data_df.columns}", flush=True)
+    print(f"data_df : {data_df}", flush=True)
 
-    test_domain = inference_params["test_domain"]
+    # test_domain: '0': 717, - WNT/WKT # -1 in configfile
+    # test_domain: '1': 205, - MSH
+    # test_domain: '2': 216, - CTL
+    # test_domain: '3': 168, - CPS
 
-    if test_domain:
-        # test_domain: '0': 717, - WNT/WKT # -1 in configfile
-        # test_domain: '1': 205, - MSH
-        # test_domain: '2': 216, - CTL
-        # test_domain: '3': 168, - CPS
+    test_domains = [
+        ("0", "WNT_WKT"),
+        ("1", "MSH"),
+        ("2", "CTL"),
+        ("3", "CPS"),
+        ("4", "all"),
+    ]
 
-        if test_domain == -1:
-            print(f"Testing on Domain : {'wnt_wkt'}", flush=True)
-            data_df = data_df[data_df["domain"] == str(0)]
-        else:
-            print(f"Testing on Domain : {test_domain}", flush=True)
-            data_df = data_df[data_df["domain"] == str(test_domain)]
-
-    else:
-        print(f"*** Testing on All Domains ***")
-
-    print(f"num_test_instance : {len(data_df)}", flush=True)
-
-    un_wictsv = UnsupervisedWicTsv(config=config)
-
-    all_preds, all_labels = [], []
-
-    for batch_no, i in enumerate(range(0, len(data_df), batch_size)):
-        print(flush=True)
+    for domain_id, domain in test_domains:
         print(
-            f"Processing Batch : {batch_no} / {len(data_df) // batch_size + 1}",
+            f"******* Testing on domain_id: {domain_id}, domain: {domain} *******",
             flush=True,
         )
 
-        words, context_sents, definitions, batch_labels = (
-            [],
-            [],
-            [],
-            [],
+        if domain_id in ("0", "1", "2", "3"):
+            data_df = data_df[data_df["domain"] == domain_id]
+        else:
+            print(f"*** Testing on All Domains ***")
+
+        print(f"num_test_instance : {len(data_df)}", flush=True)
+
+        all_preds, all_labels = [], []
+
+        for batch_no, i in enumerate(range(0, len(data_df), batch_size)):
+            print(flush=True)
+            print(
+                f"Processing Batch : {batch_no} / {len(data_df) // batch_size + 1}",
+                flush=True,
+            )
+
+            words, context_sents, definitions, batch_labels = (
+                [],
+                [],
+                [],
+                [],
+            )
+
+            batch = data_df.values[i : i + batch_size]
+
+            for word, _, context, definition, _, _, label in batch:
+                words.append(word)
+                context_sents.append(
+                    context.lower().replace(
+                        word.lower(), un_wictsv.tokenizer.mask_token
+                    )
+                )
+                definitions.append(
+                    un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
+                )
+                batch_labels.append(label)
+
+            print(f"***words : {len(words)}, {words}", flush=True)
+            print(flush=True)
+            print(
+                f"***context_sents : {len(context_sents)}, {context_sents}", flush=True
+            )
+            print(flush=True)
+            print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
+            print(f"***batch_labels : {len(batch_labels)}, {batch_labels}", flush=True)
+
+            assert len(context_sents) == len(
+                definitions
+            ), "In batch context_sents len not equal to definitions."
+
+            cosine_distance = un_wictsv(
+                context_sents=context_sents, definition_sents=definitions
+            )
+
+            all_preds.extend(cosine_distance)
+            all_labels.extend(batch_labels)
+
+        probs_pkl_file = os.path.join(
+            inference_params["save_dir"],
+            f"{config['experiment_name']}_{domain_id}_{domain}.pkl",
         )
 
-        batch = data_df.values[i : i + batch_size]
+        with open(probs_pkl_file, "wb") as pkl_file:
+            pickle.dump(all_preds, pkl_file)
 
-        for word, _, context, definition, _, _, label in batch:
-            words.append(word)
-            context_sents.append(
-                context.lower().replace(word.lower(), un_wictsv.tokenizer.mask_token)
-            )
-            definitions.append(
-                un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
-            )
-            batch_labels.append(label)
+        def to_labels(probs, threshold):
+            return (probs <= threshold).astype("int")
 
-        print(f"***words : {len(words)}, {words}", flush=True)
-        print(flush=True)
-        print(f"***context_sents : {len(context_sents)}, {context_sents}", flush=True)
-        print(flush=True)
-        print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
-        print(f"***batch_labels : {len(batch_labels)}, {batch_labels}", flush=True)
+        classification_thresh = inference_params["classification_thresh"]
 
-        assert len(context_sents) == len(
-            definitions
-        ), "In batch context_sents len not equal to definitions."
+        assert (
+            classification_thresh is not None
+        ), f"Specify classification_thresh. It is: {classification_thresh} now."
 
-        cosine_distance = un_wictsv(
-            context_sents=context_sents, definition_sents=definitions
+        all_preds = to_labels(
+            probs=np.array(all_preds), threshold=classification_thresh
         )
+        scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 
-        all_preds.extend(cosine_distance)
-        all_labels.extend(batch_labels)
+        print(f"all_labels: {len(all_labels)}, {all_labels}", flush=True)
+        print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
-    probs_pkl_file = os.path.join(
-        inference_params["save_dir"], config["experiment_name"]
-    )
-
-    with open(probs_pkl_file, "wb") as pkl_file:
-        pickle.dump(all_preds, pkl_file)
-
-    # def to_labels(probs, threshold):
-    #     return (probs <= threshold).astype("int")
-
-    # classification_thresh = inference_params["classification_thresh"]
-    # all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
-    # scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
-
-    # print(f"labels : {len(all_labels)}, {all_labels}", flush=True)
-    # print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
-
-    # print(flush=True)
-    # for key, value in scores.items():
-    #     print(key, ":", value, flush=True)
+        print(flush=True)
+        for key, value in scores.items():
+            print(key, ":", value, flush=True)
+        print(flush=True)
