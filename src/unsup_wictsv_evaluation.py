@@ -24,12 +24,14 @@ class UnsupervisedWicTsv(nn.Module):
     def __init__(self, config):
         super(UnsupervisedWicTsv, self).__init__()
 
-        training_params = config["training_params"]
+        inference_params = config["inference_params"]
         dataset_params = config["dataset_params"]
         model_params = config["model_params"]
 
-        pretrained_mention_model_path = training_params["pretrained_mention_model_path"]
-        pretrained_definition_model_path = training_params[
+        pretrained_mention_model_path = inference_params[
+            "pretrained_mention_model_path"
+        ]
+        pretrained_definition_model_path = inference_params[
             "pretrained_definition_model_path"
         ]
 
