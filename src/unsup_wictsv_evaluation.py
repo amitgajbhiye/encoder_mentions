@@ -287,6 +287,10 @@ if __name__ == "__main__":
         print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
         print(flush=True)
+        print(
+            f"******* Results on domain_id: {domain_id}, domain: {domain} records: {domain_data_df.shape[0]}*******",
+            flush=True,
+        )
         for key, value in scores.items():
             print(key, ":", value, flush=True)
         print(flush=True)
