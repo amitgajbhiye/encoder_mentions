@@ -205,18 +205,18 @@ if __name__ == "__main__":
         )
 
         if domain_id in ("0", "1", "2", "3"):
-            data_df = data_df[data_df["domain"] == domain_id]
+            domain_data_df = data_df[data_df["domain"] == domain_id]
         else:
             print(f"*** Testing on All Domains ***")
 
-        print(f"num_test_instance : {len(data_df)}", flush=True)
+        print(f"num_test_instance : {len(domain_data_df)}", flush=True)
 
         all_preds, all_labels = [], []
 
-        for batch_no, i in enumerate(range(0, len(data_df), batch_size)):
+        for batch_no, i in enumerate(range(0, len(domain_data_df), batch_size)):
             print(flush=True)
             print(
-                f"Processing Batch : {batch_no} / {len(data_df) // batch_size + 1}",
+                f"Processing Batch : {batch_no} / {len(domain_data_df) // batch_size + 1}",
                 flush=True,
             )
 
@@ -227,7 +227,7 @@ if __name__ == "__main__":
                 [],
             )
 
-            batch = data_df.values[i : i + batch_size]
+            batch = domain_data_df.values[i : i + batch_size]
 
             for word, _, context, definition, _, _, label in batch:
                 words.append(word)
