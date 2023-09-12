@@ -1,4 +1,5 @@
 import torch
+import os
 import torch.nn as nn
 import csv
 import numpy as np
@@ -127,7 +128,7 @@ def _read_tsv(input_file, quotechar=None):
 
 
 if __name__ == "__main__":
-    set_seed(42)
+    set_seed(1)
 
     parser = ArgumentParser(description="WiCTSV Evaluation")
 
@@ -145,7 +146,7 @@ if __name__ == "__main__":
     print("The model is run with the following configuration", flush=True)
     print(f"\n {config} \n", flush=True)
 
-    inference_params = config["training_params"]
+    inference_params = config["inference_params"]
 
     batch_size = inference_params["batch_size"]
     wictsv_file = inference_params["wictsv_test_file"]
@@ -177,14 +178,13 @@ if __name__ == "__main__":
     print(f"data_df : {data_df}", flush=True)
     print(f"data_df.columns : {data_df.columns}", flush=True)
 
-    # test_domain = "wnt"
     test_domain = inference_params["test_domain"]
 
     if test_domain:
-        # '0': 717, - WNT/WKT # -1 in configfile
-        # '1': 205, - MSH
-        # '2': 216, - CTL
-        # '3': 168, - CPS
+        # test_domain: '0': 717, - WNT/WKT # -1 in configfile
+        # test_domain: '1': 205, - MSH
+        # test_domain: '2': 216, - CTL
+        # test_domain: '3': 168, - CPS
 
         if test_domain == -1:
             print(f"Testing on Domain : {'wnt_wkt'}", flush=True)
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     for batch_no, i in enumerate(range(0, len(data_df), batch_size)):
         print(flush=True)
         print(
-            f"Processing Batch : {batch_no} / {len(data_df)//batch_size + 1}",
+            f"Processing Batch : {batch_no} / {len(data_df) // batch_size + 1}",
             flush=True,
         )
 
@@ -246,21 +246,23 @@ if __name__ == "__main__":
         all_preds.extend(cosine_distance)
         all_labels.extend(batch_labels)
 
-    probs_pkl_file = "trained_models/wictsv_dev_cos_dist/mscgcnetchatgpt_wictsv_testset_cosine_distances.pickle"
+    probs_pkl_file = os.path.join(
+        inference_params["save_dir"], config["experiment_name"]
+    )
+
     with open(probs_pkl_file, "wb") as pkl_file:
         pickle.dump(all_preds, pkl_file)
 
-    def to_labels(probs, threshold):
-        return (probs <= threshold).astype("int")
+    # def to_labels(probs, threshold):
+    #     return (probs <= threshold).astype("int")
 
-    # classification_thresh = 0.6369
-    classification_thresh = 0.6366  # mscgcnetchatgpt bert large
-    all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
-    scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
+    # classification_thresh = inference_params["classification_thresh"]
+    # all_preds = to_labels(probs=np.array(all_preds), threshold=classification_thresh)
+    # scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 
-    print(f"labels : {len(all_labels)}, {all_labels}", flush=True)
-    print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+    # print(f"labels : {len(all_labels)}, {all_labels}", flush=True)
+    # print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
-    print(flush=True)
-    for key, value in scores.items():
-        print(key, ":", value, flush=True)
+    # print(flush=True)
+    # for key, value in scores.items():
+    #     print(key, ":", value, flush=True)
