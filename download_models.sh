@@ -12,4 +12,4 @@ wget https://huggingface.co/amitgajbhiye/mention_and_definition_encoders/resolve
 
 
 ## BERT-large Definition Encoder
-wget https://huggingface.co/amitgajbhiye/mention_and_definition_encoders/resolve/main/bert_large_definition_encoder_wordnet_codwoe.pt.pt
+wget https://huggingface.co/amitgajbhiye/mention_and_definition_encoders/resolve/main/bert_large_definition_encoder_wordnet_codwoe.pt
