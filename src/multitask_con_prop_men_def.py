@@ -231,6 +231,8 @@ class DatasetConceptPropDefMen(Dataset):
                 mens.append(sent)
                 con_mens.append(con)
                 con_mens_labels.append(lbl)
+            else:
+                raise Exception(f"Sent2 type: {typ} is incorrect.")
 
         print(f"In batch")
         print(f"props: {len(con_prop)}, ++++ {con_prop}, ++++, {props}", flush=True)
@@ -380,13 +382,6 @@ class JointConceptPropDefMen(nn.Module):
         #     "con_mens_labels": con_mens_labels,
         # }
 
-        print("+++++++++++++++++++++++++++++++++", flush=True)
-        print(
-            f'input_ids_and_labels["property_encodings"]["input_ids"].shape :{input_ids_and_labels["property_encodings"]["input_ids"].shape}',
-            flush=True,
-        )
-        print("+++++++++++++++++++++++++++++++++", flush=True)
-
         if input_ids_and_labels["property_encodings"]:
             con_prop_output = self.concept_encoder(
                 **input_ids_and_labels["con_prop_encodings"]
@@ -406,13 +401,24 @@ class JointConceptPropDefMen(nn.Module):
                 prop_hidden_states,
             )
 
+            print("+++++++++++++++++++++++++++++++++", flush=True)
+            print(
+                f'input_ids_and_labels["property_encodings"]["input_ids"].shape :{input_ids_and_labels["property_encodings"]["input_ids"].shape}',
+                flush=True,
+            )
+            print("+++++++++++++++++++++++++++++++++", flush=True)
+
             ### Cross Entropy Loss
-            if input_ids_and_labels["property_encodings"]["input_ids"].shape[0] == 1:
-                loss_cross_con_prop = 0.0
-            else:
-                loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
-                    con_prop_masks, prop_masks, self.contrastive_loss_fn, device
-                )
+            # if input_ids_and_labels["property_encodings"]["input_ids"].shape[0] == 1:
+            #     loss_cross_con_prop = 0.0
+            # else:
+            #     loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
+            #         con_prop_masks, prop_masks, self.contrastive_loss_fn, device
+            #     )
+
+            loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
+                con_prop_masks, prop_masks, self.contrastive_loss_fn, device
+            )
 
             print(f"loss_cross_con_prop: {loss_cross_con_prop}", flush=True)
 
@@ -674,9 +680,9 @@ def train(config, param_dict):
         val_loss = 0.0
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
             val_input_ids_and_labels = val_dataset.get_ids(batch)
-            val_input_ids_and_labels = {
-                key: value.to(device) for key, value in val_input_ids_and_labels.items()
-            }
+            # val_input_ids_and_labels = {
+            #     key: value.to(device) for key, value in val_input_ids_and_labels.items()
+            # }
 
             with torch.no_grad():
                 running_val_loss = model(input_ids_and_labels=val_input_ids_and_labels)
