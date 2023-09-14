@@ -101,7 +101,7 @@ class DatasetConceptPropDefMen(Dataset):
                 f"Input file type is not correct !!! - {con_prop_men_def_file}"
             )
 
-        self.data_df = self.data_df.sample(frac=0.005)  #############################
+        self.data_df = self.data_df.sample(frac=0.01)  #############################
         self.data_df.reset_index(inplace=True, drop=True)
         self.unique_cons = self.data_df["concept"].unique()
 
@@ -417,7 +417,10 @@ class JointConceptPropDefMen(nn.Module):
             #     )
 
             loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
-                con_prop_masks, prop_masks, self.contrastive_loss_fn, device
+                concept_embeddings=con_prop_masks,
+                property_embeddings=prop_masks,
+                loss_fn=self.cross_entropy_loss,
+                device=device,
             )
 
             print(f"loss_cross_con_prop: {loss_cross_con_prop}", flush=True)
@@ -642,7 +645,7 @@ def train(config, param_dict):
         train_loss = 0.0
         model.train()
 
-        for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+        for step, batch in enumerate(tqdm(train_dataloader, desc="train")):
             train_input_ids_and_labels = train_dataset.get_ids(batch)
             # train_input_ids_and_labels = {
             #     key: value.to(device)
