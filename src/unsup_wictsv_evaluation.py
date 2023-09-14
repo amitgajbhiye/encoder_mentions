@@ -36,11 +36,13 @@ class UnsupervisedWicTsv(nn.Module):
         ]
 
         # Creating Mention Model
-        self.men_model = nn.DataParallel(mention_encoder(model_params=model_params))
+        # self.men_model = nn.DataParallel(mention_encoder(model_params=model_params))
+        self.men_model = mention_encoder(model_params=model_params)
         self.men_model.to(device=device)
 
         # Creating Definition Model
-        self.def_model = nn.DataParallel(definition_encoder(model_params=model_params))
+        # self.def_model = nn.DataParallel(definition_encoder(model_params=model_params))
+        self.def_model = definition_encoder(model_params=model_params)
         self.def_model.to(device=device)
 
         self.men_model.load_state_dict(torch.load(pretrained_mention_model_path))
