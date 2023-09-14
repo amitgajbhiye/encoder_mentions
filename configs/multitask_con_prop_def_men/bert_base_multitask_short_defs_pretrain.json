@@ -5,7 +5,7 @@
         "dataset_name": "con_sent",
         "hf_tokenizer_name": "bert-base-uncased",
         "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_base_mlm/tokenizer",
-        "max_len": 60,
+        "max_len": 50,
         "train_file_path": "data/multitask_con_prop_def_men/short_definitions/multitask_train.tsv",
         "val_file_path": "data/multitask_con_prop_def_men/short_definitions/multitask_val.tsv",
         "test_file_path": null

@@ -234,7 +234,7 @@ class DatasetConceptPropDefMen(Dataset):
             else:
                 raise Exception(f"Sent2 type: {typ} is incorrect.")
 
-        print(f"In batch")
+        print(f"in_batch_data", flush=True)
         print(
             f"con_props- len: {len(con_prop)}, cons:{con_prop}, props:{props}, con_prop_labels:{con_prop_labels}",
             flush=True,
@@ -333,9 +333,11 @@ class DatasetConceptPropDefMen(Dataset):
             "con_prop_encodings": con_prop_encodings,
             "property_encodings": property_encodings,
             "con_prop_labels": con_prop_labels,
+            ###
             "con_def_encodings": con_def_encodings,
             "definition_encodings": definition_encodings,
             "con_defs_labels": con_defs_labels,
+            ###
             "con_mens_encodings": con_mens_encodings,
             "mention_encodings": mention_encodings,
             "con_mens_labels": con_mens_labels,
@@ -510,7 +512,7 @@ class JointConceptPropDefMen(nn.Module):
                 device=device
             )
 
-            print(f"con_men_all_embed.shape: {con_men_all_embed}")
+            print(f"con_men_all_embed.shape: {con_men_all_embed.shape}")
             print(f"before_con_mens_labels.shape: {con_mens_labels.shape}", flush=True)
 
             con_mens_labels = torch.cat([con_mens_labels, con_mens_labels], dim=0)
