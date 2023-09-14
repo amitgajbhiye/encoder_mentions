@@ -252,18 +252,16 @@ class DatasetConceptPropDefMen(Dataset):
         print(flush=True)
 
         assert (
-            con_prop == props == con_prop_labels
+            len(con_prop) == len(props) == len(con_prop_labels)
         ), f"#num of concept property data in batch not equal"
 
         assert (
-            con_defs == defs == con_defs_labels
+            len(con_defs) == len(defs) == len(con_defs_labels)
         ), f"#num of concept definition data in batch not equal"
 
         assert (
-            con_mens == mens == con_mens_labels
+            len(con_mens) == len(mens) == len(con_mens_labels)
         ), f"#num of concept property data in batch not equal"
-
-        # print (f"concept_encodings: {len(concept_prompt)}, {concept_encodings['input_ids'].shape}")
 
         if props:
             property_encodings = get_encodings(sents=props)
