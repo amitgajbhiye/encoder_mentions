@@ -68,13 +68,13 @@ def calculate_inbatch_cross_entropy_loss(
         .sum(-1)
         .reshape(property_embeddings.shape[0], 1)
     )
-    # labels_pos_concepts = torch.ones_like(
-    #     logits_pos_concepts, dtype=torch.float32, device=device
-    # )
-
-    labels_pos_concepts = torch.ones(
-        logits_pos_concepts.shape[0], dtype=torch.float32, device=device
+    labels_pos_concepts = torch.ones_like(
+        logits_pos_concepts, dtype=torch.float32, device=device
     )
+
+    # labels_pos_concepts = torch.ones_like(
+    #     logits_pos_concepts.shape[0], dtype=torch.float32, device=device
+    # )
 
     print(flush=True)
     print(f"++++++++++ in_calculate_inbatch_cross_entropy_loss ++++++++++", flush=True)
@@ -101,13 +101,13 @@ def calculate_inbatch_cross_entropy_loss(
 
     logits_neg_concepts = logits_neg_concepts.reshape(logits_neg_concepts.shape[0], -1)
 
-    # labels_neg_concepts = torch.zeros_like(
-    #     logits_neg_concepts, dtype=torch.float32, device=device
-    # )
-
-    labels_neg_concepts = torch.zeros(
-        logits_neg_concepts.shape[0], dtype=torch.float32, device=device
+    labels_neg_concepts = torch.zeros_like(
+        logits_neg_concepts, dtype=torch.float32, device=device
     )
+
+    # labels_neg_concepts = torch.zeros(
+    #     logits_neg_concepts.shape[0], dtype=torch.float32, device=device
+    # )
 
     print(
         f"logits_neg_concepts: {logits_neg_concepts.shape, logits_neg_concepts}",
