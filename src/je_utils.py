@@ -148,8 +148,10 @@ def calculate_inbatch_cross_entropy_loss(
     print(f"all_labels: {all_labels.shape, all_labels}", flush=True)
 
     all_loss = loss_fn(all_logits, all_labels)
-
-    print(f"all_loss: {all_loss}", flush=True)
+    print(flush=True)
+    print(f"total_loss_entropy: {total_loss}", flush=True)
+    print(f"all_cross_entropy_loss: {all_loss}", flush=True)
+    print(flush=True)
 
     ########################
 
