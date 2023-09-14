@@ -421,6 +421,8 @@ class JointConceptPropDefMen(nn.Module):
             )
 
             print(f"loss_cross_con_prop: {loss_cross_con_prop}", flush=True)
+        else:
+            loss_cross_con_prop = 0.0
 
         if input_ids_and_labels["definition_encodings"]:
             con_def_output = self.concept_encoder(
