@@ -235,12 +235,33 @@ class DatasetConceptPropDefMen(Dataset):
                 raise Exception(f"Sent2 type: {typ} is incorrect.")
 
         print(f"In batch")
-        print(f"props: {len(con_prop)}, ++++ {con_prop}, ++++, {props}", flush=True)
+        print(
+            f"con_props- len: {len(con_prop)}, cons:{con_prop}, props:{props}, con_prop_labels:{con_prop_labels}",
+            flush=True,
+        )
         print(flush=True)
-        print(f"defs: {len(con_defs)}, ++++, {con_defs}, ++++, {defs}", flush=True)
+        print(
+            f"con_defs- len:{len(con_defs)}, cons:{con_defs}, defs:{defs}, con_defs_labels:{con_defs_labels}",
+            flush=True,
+        )
         print(flush=True)
-        print(f"mens: {len(con_mens)}, ++++, {con_mens}, ++++, {mens}", flush=True)
+        print(
+            f"con_mens: len:{len(con_mens)},  cons:{con_mens}, mens:{mens}, con_mens_labels:{con_mens_labels}",
+            flush=True,
+        )
         print(flush=True)
+
+        assert (
+            con_prop == props == con_prop_labels
+        ), f"#num of concept property data in batch not equal"
+
+        assert (
+            con_defs == defs == con_defs_labels
+        ), f"#num of concept definition data in batch not equal"
+
+        assert (
+            con_mens == mens == con_mens_labels
+        ), f"#num of concept property data in batch not equal"
 
         # print (f"concept_encodings: {len(concept_prompt)}, {concept_encodings['input_ids'].shape}")
 
@@ -264,6 +285,7 @@ class DatasetConceptPropDefMen(Dataset):
         else:
             property_encodings = None
             con_prop_encodings = None
+            con_prop_labels = None
 
         if defs:
             definition_encodings = get_encodings(sents=defs)
@@ -285,6 +307,7 @@ class DatasetConceptPropDefMen(Dataset):
         else:
             definition_encodings = None
             con_def_encodings = None
+            con_defs_labels = None
 
         if mens:
             mention_encodings = get_encodings(sents=mens)
@@ -306,6 +329,7 @@ class DatasetConceptPropDefMen(Dataset):
         else:
             mention_encodings = None
             con_mens_encodings = None
+            con_mens_labels = None
 
         input_ids_and_labels = {
             "con_prop_encodings": con_prop_encodings,
@@ -487,7 +511,13 @@ class JointConceptPropDefMen(nn.Module):
             con_mens_labels = torch.tensor(input_ids_and_labels["con_mens_labels"]).to(
                 device=device
             )
+
+            print(f"con_men_all_embed.shape: {con_men_all_embed}")
+            print(f"before_con_mens_labels.shape: {con_mens_labels.shape}", flush=True)
+
             con_mens_labels = torch.cat([con_mens_labels, con_mens_labels], dim=0)
+
+            print(f"after_con_mens_labels.shape: {con_mens_labels.shape}", flush=True)
 
             loss_contra_con_men = self.contrastive_loss_fn(
                 con_men_all_embed, con_mens_labels

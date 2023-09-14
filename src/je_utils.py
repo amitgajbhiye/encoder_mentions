@@ -61,6 +61,71 @@ def compute_scores(labels, preds):
 def calculate_inbatch_cross_entropy_loss(
     concept_embeddings, property_embeddings, loss_fn, device
 ):
+    ##### Handle when there is only one con prop pair, do not generate negative in this case
+    logits_pos_concepts = (
+        (concept_embeddings * property_embeddings)
+        .sum(-1)
+        .reshape(property_embeddings.shape[0], 1)
+    )
+    labels_pos_concepts = torch.ones_like(
+        logits_pos_concepts, dtype=torch.float32, device=device
+    )
+
+    print(flush=True)
+    print(f"++++++++++ in_calculate_inbatch_cross_entropy_loss ++++++++++", flush=True)
+    print(f"concept_embeddings.shape: {concept_embeddings.shape}")
+    print(f"property_embeddings.shape: {property_embeddings.shape}")
+    print(
+        f"logits_pos_concepts: {logits_pos_concepts.shape, logits_pos_concepts}",
+        flush=True,
+    )
+    print(
+        f"labels_pos_concepts: {labels_pos_concepts.shape, labels_pos_concepts}",
+        flush=True,
+    )
+    print(flush=True)
+
+    concept_embeddings = concept_embeddings.unsqueeze(1)
+    property_embeddings = property_embeddings.unsqueeze(0)
+
+    logits_neg_concepts = torch.sum(concept_embeddings * property_embeddings, dim=2)
+    logits_neg_concepts.fill_diagonal_(0.0)
+    logits_neg_concepts = logits_neg_concepts.flatten()
+
+    logits_neg_concepts = logits_neg_concepts.reshape(logits_neg_concepts.shape[0], -1)
+
+    labels_neg_concepts = torch.zeros_like(
+        logits_neg_concepts, dtype=torch.float32, device=device
+    )
+
+    print(flush=True)
+    print(
+        f"logits_neg_concepts: {logits_neg_concepts.shape, logits_neg_concepts}",
+        flush=True,
+    )
+    print(
+        f"labels_neg_concepts: {labels_neg_concepts.shape, labels_neg_concepts}",
+        flush=True,
+    )
+    print(flush=True)
+
+    all_logits = torch.cat((logits_pos_concepts, logits_neg_concepts), dim=0)
+    all_labels = torch.cat((labels_pos_concepts, labels_neg_concepts), dim=0)
+
+    print(f"all_logits: {all_logits.shape, all_logits}", flush=True)
+    print(f"all_labels: {all_labels.shape, all_labels}", flush=True)
+
+    all_loss = loss_fn(all_logits, all_labels)
+    print(flush=True)
+    print(f"all_cross_entropy_loss: {all_loss}", flush=True)
+    print(flush=True)
+
+    return all_loss, all_logits, all_labels
+
+
+def old_calculate_inbatch_cross_entropy_loss(
+    concept_embeddings, property_embeddings, loss_fn, device
+):
     batch_logits, batch_labels = [], []
 
     logits_pos_concepts = (
