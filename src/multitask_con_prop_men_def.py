@@ -666,7 +666,7 @@ def train(config, param_dict):
                 )
 
             del train_input_ids_and_labels
-            del loss
+            del running_train_loss
             gc.collect()
 
         log.info(f"train_step: {step}")
