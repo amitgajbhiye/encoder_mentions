@@ -126,10 +126,11 @@ def calculate_inbatch_cross_entropy_loss(
     print(flush=True)
     print(f"loss_pos_concept: {loss_pos_concept}", flush=True)
     print(f"loss_neg_concept: {loss_neg_concept}", flush=True)
-    print(flush=True)
 
     ##############
     total_loss = loss_pos_concept + loss_neg_concept
+    print(f"total_loss_entropy: {total_loss}", flush=True)
+    print(flush=True)
     ##############
 
     batch_logits.append(logits_pos_concepts.flatten())

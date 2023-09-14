@@ -662,7 +662,7 @@ def train(config, param_dict):
 
             if (step + 1) % 20 == 0:
                 log.info(
-                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {running_train_loss.item():.4f}"
                 )
 
             del train_input_ids_and_labels
