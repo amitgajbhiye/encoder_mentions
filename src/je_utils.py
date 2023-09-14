@@ -139,4 +139,18 @@ def calculate_inbatch_cross_entropy_loss(
     batch_logits.extend(logits_neg_concepts.flatten())
     batch_labels.extend(labels_neg_concepts.flatten())
 
+    ########################
+
+    all_logits = torch.cat((logits_pos_concepts, logits_neg_concepts), dim=0)
+    all_labels = torch.cat((labels_pos_concepts, labels_neg_concepts), dim=0)
+
+    print(f"all_logits: {all_logits.shape, all_logits}", flush=True)
+    print(f"all_labels: {all_labels.shape, all_labels}", flush=True)
+
+    all_loss = loss_fn(all_logits, all_labels)
+
+    print(f"all_loss: {all_loss}", flush=True)
+
+    ########################
+
     return total_loss, batch_logits, batch_labels
