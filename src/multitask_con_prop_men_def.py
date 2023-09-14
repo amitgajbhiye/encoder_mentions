@@ -749,7 +749,9 @@ def train(config, param_dict):
             early_stopping(val_loss, model)
 
         if early_stopping.early_stop:
-            logging.info("Early stopping. Model trained.")
+            log.info("Early stopping. Model trained.")
+            log.info(f"Model saved at: {model_file}")
+
             break
 
     torch.cuda.empty_cache()
