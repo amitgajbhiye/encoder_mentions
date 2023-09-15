@@ -145,11 +145,6 @@ class DatasetConceptPropDefMen(Dataset):
 
         concept_prompt = concept + " means " + self.mask_token
 
-        #         print (f"concept: {concept}")
-        #         print (f"sent2: {sent2}")
-        #         print (f"sent2_type: {sent2_type}")
-        #         print (f"labels: {labels}")
-
         if sent2_type == "property":
             sent2_prompt = sent2 + " means " + self.mask_token
         elif sent2_type == "definition":
@@ -232,7 +227,7 @@ class DatasetConceptPropDefMen(Dataset):
                 con_mens.append(con)
                 con_mens_labels.append(lbl)
             else:
-                raise Exception(f"Sent2 type: {typ} is incorrect.")
+                raise Exception(f"Sent2 type: {typ}, is incorrect.")
 
         print(f"in_batch_data", flush=True)
         print(
@@ -371,7 +366,6 @@ class JointConceptPropDefMen(nn.Module):
         )
 
         self.run_mode = model_params["run_mode"]
-
         if self.run_mode == "train":
             self.cross_entropy_loss = nn.BCEWithLogitsLoss()
 
@@ -414,7 +408,7 @@ class JointConceptPropDefMen(nn.Module):
             con_prop_masks = self.get_mask_token_embeddings(
                 input_ids_and_labels["con_prop_encodings"]["input_ids"],
                 con_prop_hidden_states,
-            )
+            )  #####
 
             prop_output = self.property_encoder(
                 **input_ids_and_labels["property_encodings"]
@@ -423,22 +417,7 @@ class JointConceptPropDefMen(nn.Module):
             prop_masks = self.get_mask_token_embeddings(
                 input_ids_and_labels["property_encodings"]["input_ids"],
                 prop_hidden_states,
-            )
-
-            print("+++++++++++++++++++++++++++++++++", flush=True)
-            print(
-                f'input_ids_and_labels["property_encodings"]["input_ids"].shape :{input_ids_and_labels["property_encodings"]["input_ids"].shape}',
-                flush=True,
-            )
-            print("+++++++++++++++++++++++++++++++++", flush=True)
-
-            ### Cross Entropy Loss
-            # if input_ids_and_labels["property_encodings"]["input_ids"].shape[0] == 1:
-            #     loss_cross_con_prop = 0.0
-            # else:
-            #     loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
-            #         con_prop_masks, prop_masks, self.contrastive_loss_fn, device
-            #     )
+            )  #####
 
             loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
                 concept_embeddings=con_prop_masks,
@@ -569,7 +548,7 @@ def prepare_data_and_models(config):
             collate_fn=None,
             num_workers=num_workers,
             pin_memory=True,
-            drop_last=True,
+            drop_last=False,
         )
 
         log.info(f"Train Data DF shape : {train_dataset.data_df.shape}")
@@ -613,12 +592,12 @@ def prepare_data_and_models(config):
 
         log.info(f"Loaded Pretrained Model")
 
-    # if torch.cuda.is_available():
-    #     n_gpu = torch.cuda.device_count()
-    #     if n_gpu > 1:
-    #         logging.info(f"using multiple GPUs: {n_gpu}")
-    #         model = nn.DataParallel(model)
-    #     model.to(device=device)
+    if torch.cuda.is_available():
+        n_gpu = torch.cuda.device_count()
+        if n_gpu > 1:
+            logging.info(f"using_multiple_GPUs: {n_gpu}")
+            model = nn.DataParallel(model)
+        model.to(device=device)
 
     log.info(f"model_class : {model.__class__.__name__}")
 
@@ -678,11 +657,6 @@ def train(config, param_dict):
 
         for step, batch in enumerate(tqdm(train_dataloader, desc="train")):
             train_input_ids_and_labels = train_dataset.get_ids(batch)
-            # train_input_ids_and_labels = {
-            #     key: value.to(device)
-            #     for key, value in train_input_ids_and_labels.items()
-            # }
-
             model.zero_grad()
             running_train_loss = model(input_ids_and_labels=train_input_ids_and_labels)
 
@@ -716,10 +690,6 @@ def train(config, param_dict):
         val_loss = 0.0
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
             val_input_ids_and_labels = val_dataset.get_ids(batch)
-            # val_input_ids_and_labels = {
-            #     key: value.to(device) for key, value in val_input_ids_and_labels.items()
-            # }
-
             with torch.no_grad():
                 running_val_loss = model(input_ids_and_labels=val_input_ids_and_labels)
 

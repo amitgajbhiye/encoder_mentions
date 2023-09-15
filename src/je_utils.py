@@ -61,7 +61,6 @@ def compute_scores(labels, preds):
 def calculate_inbatch_cross_entropy_loss(
     concept_embeddings, property_embeddings, loss_fn, device
 ):
-    ##### Handle when there is only one con prop pair, do not generate negative in this case
     logits_pos_concepts = (
         (concept_embeddings * property_embeddings)
         .sum(-1)
@@ -90,7 +89,9 @@ def calculate_inbatch_cross_entropy_loss(
 
     logits_neg_concepts = torch.sum(concept_embeddings * property_embeddings, dim=2)
     logits_neg_concepts.fill_diagonal_(0.0)
-    logits_neg_concepts = logits_neg_concepts.flatten()
+    # logits_neg_concepts = logits_neg_concepts.flatten()
+
+    logits_neg_concepts = logits_neg_concepts[logits_neg_concepts != 0]
 
     logits_neg_concepts = logits_neg_concepts.reshape(logits_neg_concepts.shape[0], -1)
 
