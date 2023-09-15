@@ -1,13 +1,13 @@
 {
-    "experiment_name": "bert_base_multitask_short_defs_pretrain",
+    "experiment_name": "bert_base_multitask_180kdata_pretrain",
     "log_dirctory": "multitask_encoder_pretrain",
     "dataset_params": {
         "dataset_name": "con_sent",
         "hf_tokenizer_name": "bert-base-uncased",
         "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_base_mlm/tokenizer",
         "max_len": 60,
-        "train_file_path": "data/multitask_con_prop_def_men/short_definitions/multitask_train.tsv",
-        "val_file_path": "data/multitask_con_prop_def_men/short_definitions/multitask_val.tsv",
+        "train_file_path": "data/multitask_con_prop_def_men/180k/multitask_train.tsv",
+        "val_file_path": "data/multitask_con_prop_def_men/180k/multitask_val.tsv",
         "test_file_path": null
     },
     "model_params": {
@@ -27,7 +27,7 @@
         "warmup_ratio": 0,
         "patience_early_stopping": 3,
         "save_dir": "trained_models/multitask_encoder_pretrain",
-        "model_name": "bert_base_multitask_short_defs_pretrain.pt",
+        "model_name": "bert_base_multitask_180kdata_pretrain.pt",
         "weight_decay": 0.03
     }
     

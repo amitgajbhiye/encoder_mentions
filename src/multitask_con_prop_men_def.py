@@ -101,7 +101,7 @@ class DatasetConceptPropDefMen(Dataset):
                 f"Input file type is not correct !!! - {con_prop_men_def_file}"
             )
 
-        self.data_df = self.data_df.sample(frac=0.01)  #############################
+        # self.data_df = self.data_df.sample(frac=0.01)  #############################
         self.data_df.reset_index(inplace=True, drop=True)
         self.unique_cons = self.data_df["concept"].unique()
 
@@ -670,7 +670,7 @@ def train(config, param_dict):
 
             train_loss += running_train_loss.item()
 
-            if (step + 1) % 20 == 0:
+            if (step + 1) % 100 == 0:
                 log.info(
                     f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {running_train_loss.item():.4f}"
                 )
