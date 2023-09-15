@@ -592,12 +592,12 @@ def prepare_data_and_models(config):
 
         log.info(f"Loaded Pretrained Model")
 
-    if torch.cuda.is_available():
-        n_gpu = torch.cuda.device_count()
-        if n_gpu > 1:
-            logging.info(f"using_multiple_GPUs: {n_gpu}")
-            model = nn.DataParallel(model)
-        model.to(device=device)
+    # if torch.cuda.is_available():
+    #     n_gpu = torch.cuda.device_count()
+    #     if n_gpu > 1:
+    #         logging.info(f"using_multiple_GPUs: {n_gpu}")
+    #         model = nn.DataParallel(model)
+    #     model.to(device=device)
 
     log.info(f"model_class : {model.__class__.__name__}")
 
