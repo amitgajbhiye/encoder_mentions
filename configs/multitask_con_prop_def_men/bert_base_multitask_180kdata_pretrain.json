@@ -6,8 +6,8 @@
         "hf_tokenizer_name": "bert-base-uncased",
         "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_base_mlm/tokenizer",
         "max_len": 80,
-        "train_file_path": "data/multitask_con_prop_def_men/180k/multitask_train.tsv",
-        "val_file_path": "data/multitask_con_prop_def_men/180k/multitask_val.tsv",
+        "train_file_path": "data/multitask_con_prop_def_men/180k/multitask_180k_train.tsv",
+        "val_file_path": "data/multitask_con_prop_def_men/180k/multitask_180k_val.tsv",
         "test_file_path": null
     },
     "model_params": {
