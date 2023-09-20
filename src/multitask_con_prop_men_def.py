@@ -1,7 +1,6 @@
 import gc
 import logging
 import os
-
 import re
 import sys
 import time
@@ -20,16 +19,16 @@ from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm, trange
 from transformers import (
     AdamW,
+    AutoTokenizer,
     BertForMaskedLM,
     BertModel,
     BertTokenizer,
     get_cosine_schedule_with_warmup,
     get_linear_schedule_with_warmup,
-    AutoTokenizer,
 )
 
 from early_stop import EarlyStopping
-from je_utils import read_config, set_seed, calculate_inbatch_cross_entropy_loss
+from je_utils import calculate_inbatch_cross_entropy_loss, read_config, set_seed
 
 warnings.filterwarnings("ignore")
 
@@ -429,6 +428,8 @@ class JointConceptPropDefMen(nn.Module):
             print(f"loss_cross_con_prop: {loss_cross_con_prop}", flush=True)
         else:
             loss_cross_con_prop = 0.0
+            con_prop_masks = None
+            prop_masks = None
 
         if input_ids_and_labels["definition_encodings"]:
             con_def_output = self.concept_encoder(
@@ -438,7 +439,7 @@ class JointConceptPropDefMen(nn.Module):
             con_def_masks = self.get_mask_token_embeddings(
                 input_ids_and_labels["con_def_encodings"]["input_ids"],
                 con_def_hidden_states,
-            )
+            )  #####
 
             def_output = self.definition_encoder(
                 **input_ids_and_labels["definition_encodings"]
@@ -447,7 +448,7 @@ class JointConceptPropDefMen(nn.Module):
             def_masks = self.get_mask_token_embeddings(
                 input_ids_and_labels["definition_encodings"]["input_ids"],
                 def_hidden_states,
-            )
+            )  #####
 
             # Contrastive loss
             con_def_all_embed = torch.cat([def_masks, con_def_masks], dim=0)
@@ -462,6 +463,8 @@ class JointConceptPropDefMen(nn.Module):
             )
         else:
             loss_contra_con_def = 0.0
+            con_def_masks = None
+            def_masks = None
 
         print(f"loss_contra_con_def: {loss_contra_con_def}", flush=True)
 
@@ -473,7 +476,7 @@ class JointConceptPropDefMen(nn.Module):
             con_men_masks = self.get_mask_token_embeddings(
                 input_ids_and_labels["con_mens_encodings"]["input_ids"],
                 con_men_hidden_states,
-            )
+            )  #####
 
             men_output = self.mention_encoder(
                 **input_ids_and_labels["mention_encodings"]
@@ -482,7 +485,7 @@ class JointConceptPropDefMen(nn.Module):
             men_masks = self.get_mask_token_embeddings(
                 input_ids_and_labels["mention_encodings"]["input_ids"],
                 men_hidden_states,
-            )
+            )  #####
 
             # Contrastive loss
             con_men_all_embed = torch.cat([men_masks, con_men_masks], dim=0)
@@ -503,6 +506,8 @@ class JointConceptPropDefMen(nn.Module):
             )
         else:
             loss_contra_con_men = 0.0
+            con_men_masks = None
+            men_masks = None
 
         print(f"loss_contra_con_men: {loss_contra_con_men}", flush=True)
 
@@ -510,7 +515,20 @@ class JointConceptPropDefMen(nn.Module):
 
         print(f"total_loss: {loss}", flush=True)
 
-        return loss
+        return_dict = {
+            "loss": loss,
+            ###
+            "con_prop_masks": con_prop_masks,
+            "prop_masks": prop_masks,
+            ###
+            "con_def_masks": con_def_masks,
+            "def_masks": def_masks,
+            ###
+            "con_men_masks": con_men_masks,
+            "men_masks": men_masks,
+        }
+
+        return return_dict
 
 
 def prepare_data_and_models(config):
@@ -658,7 +676,9 @@ def train(config, param_dict):
         for step, batch in enumerate(tqdm(train_dataloader, desc="train")):
             train_input_ids_and_labels = train_dataset.get_ids(batch)
             model.zero_grad()
-            running_train_loss = model(input_ids_and_labels=train_input_ids_and_labels)
+            output_dict = model(input_ids_and_labels=train_input_ids_and_labels)
+
+            running_train_loss = output_dict["loss"]
 
             if isinstance(model, nn.DataParallel):
                 running_train_loss = running_train_loss.mean()
@@ -691,7 +711,8 @@ def train(config, param_dict):
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
             val_input_ids_and_labels = val_dataset.get_ids(batch)
             with torch.no_grad():
-                running_val_loss = model(input_ids_and_labels=val_input_ids_and_labels)
+                output_dict = model(input_ids_and_labels=val_input_ids_and_labels)
+                running_val_loss = output_dict["loss"]
 
             if isinstance(model, nn.DataParallel):
                 running_val_loss = running_val_loss.mean()
