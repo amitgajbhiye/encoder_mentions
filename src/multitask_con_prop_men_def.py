@@ -769,6 +769,8 @@ if __name__ == "__main__":
     log.info("The model is run with the following configuration")
     log.info(f"\n {config} \n")
 
+    log.info(f"gpu_device: {device}")
+
     param_dict = prepare_data_and_models(config=config)
 
     train(config=config, param_dict=param_dict)
