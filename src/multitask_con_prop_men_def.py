@@ -74,7 +74,7 @@ class DatasetConceptPropDefMen(Dataset):
                     "concept": str,
                     "sent2": str,
                     "sent2_type": str,
-                    "sent2_len": int,
+                    "sent2_len": str,
                 },
             )
         elif os.path.isfile(con_prop_men_def_file):
@@ -91,7 +91,7 @@ class DatasetConceptPropDefMen(Dataset):
                     "concept": str,
                     "sent2": str,
                     "sent2_type": str,
-                    "sent2_len": int,
+                    "sent2_len": str,
                 },
             )
             log.info(f"loaded_dataframe: {self.data_df}")
