@@ -147,7 +147,7 @@ class DatasetConceptPropDefMen(Dataset):
         if sent2_type == "property":
             sent2_prompt = sent2 + " means " + self.mask_token
         elif sent2_type == "definition":
-            sent2_prompt = self.mask_token + ":" + sent2
+            sent2_prompt = self.mask_token + ": " + sent2
         elif sent2_type == "mention":
             sent2_prompt = self.mask_word_in_sent(concept, sent2)
 
