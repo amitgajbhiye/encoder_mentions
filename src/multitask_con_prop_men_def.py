@@ -279,6 +279,9 @@ class DatasetConceptPropDefMen(Dataset):
             con_prop_encodings = None
             con_prop_labels = None
 
+            print(f"con_prop_encodings: {len(con_prop)}")
+            print(f"property_encodings: {len(props)}")
+
         if defs:
             definition_encodings = get_encodings(sents=defs)
             con_def_encodings = get_encodings(sents=con_defs)
@@ -300,6 +303,8 @@ class DatasetConceptPropDefMen(Dataset):
             definition_encodings = None
             con_def_encodings = None
             con_defs_labels = None
+            print(f"con_def_encodings: {len(con_defs)}")
+            print(f"definition_encodings: {len(defs)}")
 
         if mens:
             mention_encodings = get_encodings(sents=mens)
@@ -322,6 +327,8 @@ class DatasetConceptPropDefMen(Dataset):
             mention_encodings = None
             con_mens_encodings = None
             con_mens_labels = None
+            print(f"con_mens_encodings: {len(con_mens)}")
+            print(f"mention_encodings: {len(mens)}")
 
         input_ids_and_labels = {
             "con_prop_encodings": con_prop_encodings,
