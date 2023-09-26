@@ -18,6 +18,6 @@
 
 conda activate venv
 
-python3 src/multitask_con_prop_men_def.py --config_file configs/multitask_con_prop_def_men/bert_base_multitask_520kdata_pretrain.json
+python3 src/multitask_con_prop_men_def.py --config_file configs/multitask_con_prop_def_men/bert_large_multitask_580kdata_pretrain.json
 
 echo 'Job Finished !!!'
