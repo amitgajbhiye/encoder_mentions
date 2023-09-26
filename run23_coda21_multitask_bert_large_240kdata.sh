@@ -13,10 +13,12 @@
 #SBATCH --gres=gpu:1
 
 #SBATCH --mem=25G
-#SBATCH -t 0-18:00:00
+#SBATCH -t 0-05:00:00
+#SBATCH --exclusive
+
 
 conda activate venv
 
-python3 src/coda_evaluation.py --config configs/coda21/multitask_bert_large_240kdata.json
+python3 src/coda_evaluation.py --config configs/coda21/multitask_bert_large_240kdata_hawk.json
 
 echo 'Job Finished !!!'
