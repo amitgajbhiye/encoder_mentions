@@ -15,6 +15,9 @@ import log
 
 from mention_encoder import ModelMentionEncoder as mention_enc
 from definition_encoder import ModelDefinitionEncoder as definition_enc
+
+from multitask_con_prop_men_def import JointConceptPropDefMen
+
 from je_utils import read_config, set_seed
 
 sys.path.insert(0, os.getcwd())
@@ -100,6 +103,105 @@ def get_definition_embeds(definition_enc, tokenizer, definition_sents):
     return def_vectors.cpu().numpy()
 
 
+def load_multitask_model_and_tokenizer(config):
+    ############
+    inference_params = config["inference_params"]
+    dataset_params = config["dataset_params"]
+    model_params = config["model_params"]
+    ############
+
+    pretrained_multitask_model_path = inference_params[
+        "pretrained_multitask_model_path"
+    ]
+
+    # Creating Multitask Model
+    multitask_model = JointConceptPropDefMen(model_params=model_params)
+    multitask_model.to(device=device)
+    multitask_model.load_state_dict(torch.load(pretrained_multitask_model_path))
+
+    tokenizer = BertTokenizer.from_pretrained(dataset_params["hf_tokenizer_path"])
+
+    print(
+        f"Multitask Model is loaded from : {pretrained_multitask_model_path}",
+        flush=True,
+    )
+    print(
+        f"multitask_model_name : {multitask_model.__class__.__name__ }",
+        flush=True,
+    )
+
+    return multitask_model, tokenizer
+
+
+def multitask_get_context_mention_embeds(
+    multitask_model, context_sents, definition_sents, tokenizer
+):
+    max_len = 120
+
+    mention_encodings = tokenizer.batch_encode_plus(
+        batch_text_or_text_pairs=context_sents,
+        max_length=max_len,
+        add_special_tokens=True,
+        padding="max_length",
+        truncation=True,
+        return_tensors="pt",
+        return_token_type_ids=True,
+    )
+
+    definition_encodings = tokenizer.batch_encode_plus(
+        batch_text_or_text_pairs=definition_sents,
+        max_length=max_len,
+        add_special_tokens=True,
+        padding="max_length",
+        truncation=True,
+        return_tensors="pt",
+        return_token_type_ids=True,
+    )
+
+    mention_encodings = {
+        key: value.to(device) for key, value in mention_encodings.items()
+    }
+    definition_encodings = {
+        key: value.to(device) for key, value in definition_encodings.items()
+    }
+
+    input_ids_and_labels = {
+        "con_prop_encodings": None,
+        "property_encodings": None,
+        "con_prop_labels": None,
+        ###
+        "con_def_encodings": None,
+        "definition_encodings": definition_encodings,
+        "con_defs_labels": None,
+        ###
+        "con_mens_encodings": None,
+        "mention_encodings": mention_encodings,
+        "con_mens_labels": None,
+    }
+
+    ### Multitask Model
+    with torch.no_grad():
+        outputs = multitask_model(input_ids_and_labels)
+
+    # return_dict = {
+    #     "loss": loss,
+    #     ###
+    #     "con_prop_masks": con_prop_masks,
+    #     "prop_masks": prop_masks,
+    #     ###
+    #     "con_def_masks": con_def_masks,
+    #     "def_masks": def_masks,
+    #     ###
+    #     "con_men_masks": con_men_masks,
+    #     "men_masks": men_masks,
+    # }
+
+    mention_vectors = outputs["men_masks"].cpu().numpy()
+    def_vectors = outputs["def_masks"].cpu().numpy()
+
+    return mention_vectors, def_vectors
+
+
 def get_print_result(sample_group: dict, sample_result: dict):
     candidates = sample_group["candidates"]
     info = sample_group["common_ancestor_info"]
@@ -151,7 +253,13 @@ def main(config):
     results_dir = os.path.join(save_dir, sentence_model)
     os.makedirs(results_dir, exist_ok=False)
 
-    mention_enc, def_enc, tokenizer = load_models_and_tokenizer(config=config)
+    model_type = inference_params["model_type"]
+
+    if model_type == "multitask":
+        multitask_model, tokenizer = load_multitask_model_and_tokenizer(config=config)
+    else:
+        mention_enc, def_enc, tokenizer = load_models_and_tokenizer(config=config)
+
     datasets = [
         "CoDA-clean-easy.json",
         "CoDA-clean-hard.json",
@@ -205,15 +313,28 @@ def main(config):
                     print(f"masked_context: {context}", flush=True)
                     print(f"definition: {definition}", flush=True)
 
-                context_embs = get_mention_embeds(
-                    mention_enc=mention_enc, tokenizer=tokenizer, context_sents=contexts
-                )
+                if model_type == "multitask":
+                    (
+                        context_embs,
+                        definition_embs,
+                    ) = multitask_get_context_mention_embeds(
+                        multitask_model=multitask_model,
+                        context_sents=contexts,
+                        definition_sents=definitions,
+                        tokenizer=tokenizer,
+                    )
+                else:
+                    context_embs = get_mention_embeds(
+                        mention_enc=mention_enc,
+                        tokenizer=tokenizer,
+                        context_sents=contexts,
+                    )
 
-                definition_embs = get_definition_embeds(
-                    definition_enc=def_enc,
-                    tokenizer=tokenizer,
-                    definition_sents=definitions,
-                )
+                    definition_embs = get_definition_embeds(
+                        definition_enc=def_enc,
+                        tokenizer=tokenizer,
+                        definition_sents=definitions,
+                    )
 
                 print(flush=True)
                 print(f"context_embs.shape : {context_embs.shape}", flush=True)

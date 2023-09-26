@@ -380,6 +380,7 @@ class JointConceptPropDefMen(nn.Module):
             self.contrastive_loss_fn = losses.NTXentLoss(
                 temperature=model_params["tau"]
             )
+        log.info(f"run_mode: {self.run_mode}")
 
     def get_mask_token_embeddings(self, input_ids, last_layer_hidden_states):
         _, mask_token_index = (input_ids == torch.tensor(self.mask_token_id)).nonzero(
@@ -407,15 +408,6 @@ class JointConceptPropDefMen(nn.Module):
         # }
 
         if input_ids_and_labels["property_encodings"]:
-            con_prop_output = self.concept_encoder(
-                **input_ids_and_labels["con_prop_encodings"]
-            )
-            con_prop_hidden_states = con_prop_output.hidden_states[-1]
-            con_prop_masks = self.get_mask_token_embeddings(
-                input_ids_and_labels["con_prop_encodings"]["input_ids"],
-                con_prop_hidden_states,
-            )  #####
-
             prop_output = self.property_encoder(
                 **input_ids_and_labels["property_encodings"]
             )
@@ -425,29 +417,31 @@ class JointConceptPropDefMen(nn.Module):
                 prop_hidden_states,
             )  #####
 
-            loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
-                concept_embeddings=con_prop_masks,
-                property_embeddings=prop_masks,
-                loss_fn=self.cross_entropy_loss,
-                device=device,
-            )
+            # Check for getting property embeddings in inference mode
+            if self.run_mode == "train":
+                con_prop_output = self.concept_encoder(
+                    **input_ids_and_labels["con_prop_encodings"]
+                )
+                con_prop_hidden_states = con_prop_output.hidden_states[-1]
+                con_prop_masks = self.get_mask_token_embeddings(
+                    input_ids_and_labels["con_prop_encodings"]["input_ids"],
+                    con_prop_hidden_states,
+                )  #####
 
-            print(f"loss_cross_con_prop: {loss_cross_con_prop}", flush=True)
+                loss_cross_con_prop, _, _ = calculate_inbatch_cross_entropy_loss(
+                    concept_embeddings=con_prop_masks,
+                    property_embeddings=prop_masks,
+                    loss_fn=self.cross_entropy_loss,
+                    device=device,
+                )
+            else:
+                loss_cross_con_prop = 0.0
         else:
             loss_cross_con_prop = 0.0
-            con_prop_masks = None
-            prop_masks = None
+
+        print(f"loss_cross_con_prop: {loss_cross_con_prop}", flush=True)
 
         if input_ids_and_labels["definition_encodings"]:
-            con_def_output = self.concept_encoder(
-                **input_ids_and_labels["con_def_encodings"]
-            )
-            con_def_hidden_states = con_def_output.hidden_states[-1]
-            con_def_masks = self.get_mask_token_embeddings(
-                input_ids_and_labels["con_def_encodings"]["input_ids"],
-                con_def_hidden_states,
-            )  #####
-
             def_output = self.definition_encoder(
                 **input_ids_and_labels["definition_encodings"]
             )
@@ -457,17 +451,31 @@ class JointConceptPropDefMen(nn.Module):
                 def_hidden_states,
             )  #####
 
-            # Contrastive loss
-            con_def_all_embed = torch.cat([def_masks, con_def_masks], dim=0)
+            # Check for getting definition embeddings in inference mode
+            if self.run_mode == "train":
+                con_def_output = self.concept_encoder(
+                    **input_ids_and_labels["con_def_encodings"]
+                )
+                con_def_hidden_states = con_def_output.hidden_states[-1]
+                con_def_masks = self.get_mask_token_embeddings(
+                    input_ids_and_labels["con_def_encodings"]["input_ids"],
+                    con_def_hidden_states,
+                )  #####
 
-            con_defs_labels = torch.tensor(input_ids_and_labels["con_defs_labels"]).to(
-                device=device
-            )
-            con_defs_labels = torch.cat([con_defs_labels, con_defs_labels], dim=0)
+                # Contrastive loss
+                con_def_all_embed = torch.cat([def_masks, con_def_masks], dim=0)
 
-            loss_contra_con_def = self.contrastive_loss_fn(
-                con_def_all_embed, con_defs_labels
-            )
+                con_defs_labels = torch.tensor(
+                    input_ids_and_labels["con_defs_labels"]
+                ).to(device=device)
+                con_defs_labels = torch.cat([con_defs_labels, con_defs_labels], dim=0)
+
+                loss_contra_con_def = self.contrastive_loss_fn(
+                    con_def_all_embed, con_defs_labels
+                )
+            else:
+                loss_contra_con_def = 0.0
+
         else:
             loss_contra_con_def = 0.0
             con_def_masks = None
@@ -476,15 +484,6 @@ class JointConceptPropDefMen(nn.Module):
         print(f"loss_contra_con_def: {loss_contra_con_def}", flush=True)
 
         if input_ids_and_labels["mention_encodings"]:
-            con_men_output = self.concept_encoder(
-                **input_ids_and_labels["con_mens_encodings"]
-            )
-            con_men_hidden_states = con_men_output.hidden_states[-1]
-            con_men_masks = self.get_mask_token_embeddings(
-                input_ids_and_labels["con_mens_encodings"]["input_ids"],
-                con_men_hidden_states,
-            )  #####
-
             men_output = self.mention_encoder(
                 **input_ids_and_labels["mention_encodings"]
             )
@@ -494,23 +493,41 @@ class JointConceptPropDefMen(nn.Module):
                 men_hidden_states,
             )  #####
 
-            # Contrastive loss
-            con_men_all_embed = torch.cat([men_masks, con_men_masks], dim=0)
+            # Check for getting mention embeddings in inference mode
+            if self.run_mode == "train":
+                con_men_output = self.concept_encoder(
+                    **input_ids_and_labels["con_mens_encodings"]
+                )
+                con_men_hidden_states = con_men_output.hidden_states[-1]
+                con_men_masks = self.get_mask_token_embeddings(
+                    input_ids_and_labels["con_mens_encodings"]["input_ids"],
+                    con_men_hidden_states,
+                )  #####
 
-            con_mens_labels = torch.tensor(input_ids_and_labels["con_mens_labels"]).to(
-                device=device
-            )
+                # Contrastive loss
+                con_men_all_embed = torch.cat([men_masks, con_men_masks], dim=0)
 
-            print(f"con_men_all_embed.shape: {con_men_all_embed.shape}")
-            print(f"before_con_mens_labels.shape: {con_mens_labels.shape}", flush=True)
+                con_mens_labels = torch.tensor(
+                    input_ids_and_labels["con_mens_labels"]
+                ).to(device=device)
 
-            con_mens_labels = torch.cat([con_mens_labels, con_mens_labels], dim=0)
+                print(f"con_men_all_embed.shape: {con_men_all_embed.shape}")
+                print(
+                    f"before_con_mens_labels.shape: {con_mens_labels.shape}", flush=True
+                )
 
-            print(f"after_con_mens_labels.shape: {con_mens_labels.shape}", flush=True)
+                con_mens_labels = torch.cat([con_mens_labels, con_mens_labels], dim=0)
 
-            loss_contra_con_men = self.contrastive_loss_fn(
-                con_men_all_embed, con_mens_labels
-            )
+                print(
+                    f"after_con_mens_labels.shape: {con_mens_labels.shape}", flush=True
+                )
+
+                loss_contra_con_men = self.contrastive_loss_fn(
+                    con_men_all_embed, con_mens_labels
+                )
+            else:
+                loss_contra_con_men = 0.0
+
         else:
             loss_contra_con_men = 0.0
             con_men_masks = None
