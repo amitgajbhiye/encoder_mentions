@@ -436,9 +436,11 @@ class JointConceptPropDefMen(nn.Module):
                 )
             else:
                 loss_cross_con_prop = 0.0
+                prop_masks = None
         else:
             loss_cross_con_prop = 0.0
             con_prop_masks = None
+            prop_masks = None
 
         print(f"loss_cross_con_prop: {loss_cross_con_prop}", flush=True)
 
