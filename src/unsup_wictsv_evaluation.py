@@ -11,6 +11,7 @@ import pickle
 from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
 
+from multitask_con_prop_men_def import JointConceptPropDefMen
 
 from transformers import BertTokenizer
 from je_utils import read_config, set_seed, compute_scores
@@ -58,13 +59,12 @@ class UnsupervisedWicTsv(nn.Module):
         self.tokenizer = BertTokenizer.from_pretrained(
             dataset_params["hf_tokenizer_path"]
         )
+        self.max_len = dataset_params["max_len"]
 
     def get_mention_embeds(self, context_sents):
-        max_len = 120
-
         ids_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=context_sents,
-            max_length=max_len,
+            max_length=self.max_len,
             add_special_tokens=True,
             padding="max_length",
             truncation=True,
@@ -80,11 +80,9 @@ class UnsupervisedWicTsv(nn.Module):
         return mention_vectors
 
     def get_definition_embeds(self, definition_sents):
-        max_len = 120
-
         ids_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=definition_sents,
-            max_length=max_len,
+            max_length=self.max_len,
             add_special_tokens=True,
             padding="max_length",
             truncation=True,
@@ -103,6 +101,109 @@ class UnsupervisedWicTsv(nn.Module):
         mention_embeds = self.get_mention_embeds(context_sents=context_sents)
         definition_embeds = self.get_definition_embeds(
             definition_sents=definition_sents
+        )
+
+        print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
+        print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
+
+        cosine_distances = []
+        for men_emb, def_emb in zip(mention_embeds, definition_embeds):
+            cos_dist = distance.cosine(men_emb.cpu().numpy(), def_emb.cpu().numpy())
+            # print(f"cos_dist: {type(cos_dist)}, {cos_dist}")
+            cosine_distances.append(cos_dist.item())
+
+        print(f"cosine_distances : {cosine_distances}", flush=True)
+
+        return cosine_distances
+
+
+class MultitaskUnsupervisedWicTsv(nn.Module):
+    def __init__(self, config):
+        super(MultitaskUnsupervisedWicTsv, self).__init__()
+
+        inference_params = config["inference_params"]
+        dataset_params = config["dataset_params"]
+        model_params = config["model_params"]
+
+        pretrained_multitask_model_path = inference_params[
+            "pretrained_multitask_model_path"
+        ]
+
+        # Creating and loading Multitask Model
+        self.multitask_model = JointConceptPropDefMen(model_params=model_params)
+        self.multitask_model.to(device=device)
+        self.multitask_model.load_state_dict(
+            torch.load(pretrained_multitask_model_path)
+        )
+
+        print(
+            f"Multitask Model is loaded from : {pretrained_multitask_model_path}",
+            flush=True,
+        )
+        print(
+            f"multitask_model_class: {self.multitask_model.__class__.__name__}",
+            flush=True,
+        )
+
+        self.tokenizer = BertTokenizer.from_pretrained(
+            dataset_params["hf_tokenizer_path"]
+        )
+        self.max_len = dataset_params["max_len"]
+
+    def multitask_get_context_mention_embeds(self, context_sents, definition_sents):
+        mention_encodings = self.tokenizer.batch_encode_plus(
+            batch_text_or_text_pairs=context_sents,
+            max_length=self.max_len,
+            add_special_tokens=True,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+            return_token_type_ids=True,
+        )
+
+        definition_encodings = self.tokenizer.batch_encode_plus(
+            batch_text_or_text_pairs=definition_sents,
+            max_length=self.max_len,
+            add_special_tokens=True,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+            return_token_type_ids=True,
+        )
+
+        mention_encodings = {
+            key: value.to(device) for key, value in mention_encodings.items()
+        }
+        definition_encodings = {
+            key: value.to(device) for key, value in definition_encodings.items()
+        }
+
+        input_ids_and_labels = {
+            "con_prop_encodings": None,
+            "property_encodings": None,
+            "con_prop_labels": None,
+            ###
+            "con_def_encodings": None,
+            "definition_encodings": definition_encodings,
+            "con_defs_labels": None,
+            ###
+            "con_mens_encodings": None,
+            "mention_encodings": mention_encodings,
+            "con_mens_labels": None,
+        }
+
+        ### Multitask Model
+        with torch.no_grad():
+            outputs = self.multitask_model(input_ids_and_labels)
+
+        mention_vectors = outputs["men_masks"]
+        def_vectors = outputs["def_masks"]
+
+        return mention_vectors, def_vectors
+
+    def forward(self, context_sents, definition_sents):
+        mention_embeds, definition_embeds = self.multitask_get_context_mention_embeds(
+            context_sents=context_sents, definition_sents=definition_sents
         )
 
         print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
@@ -148,8 +249,12 @@ if __name__ == "__main__":
     print("The model is run with the following configuration", flush=True)
     print(f"\n {config} \n", flush=True)
 
+    model_type = config["inference_params"]["model_type"]
     ######## Creating Model ########
-    un_wictsv = UnsupervisedWicTsv(config=config)
+    if model_type == "multitask":
+        un_wictsv = MultitaskUnsupervisedWicTsv(config=config)
+    else:
+        un_wictsv = UnsupervisedWicTsv(config=config)
 
     inference_params = config["inference_params"]
     batch_size = inference_params["batch_size"]

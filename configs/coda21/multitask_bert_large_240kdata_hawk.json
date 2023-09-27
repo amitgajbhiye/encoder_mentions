@@ -19,7 +19,7 @@
     	"save_dir": "output",
         "pretrained_mention_model_path": null,
         "pretrained_definition_model_path": null,
-        "pretrained_multitask_model_path": "trained_models/multitask_encoder_pretrain/bert_large_multitask_240kdata_pretrain.pt"
+        "pretrained_multitask_model_path": "/scratch/c.scmag3/encoder_mentions/trained_models/multitask_encoder_pretrain/bert_large_multitask_240kdata_pretrain.pt"
 
     }
 }
