@@ -295,16 +295,16 @@ if __name__ == "__main__":
     # test_domain: '2': 216, - CTL
     # test_domain: '3': 168, - CPS
 
-    # test_domains = [
-    #     ("0", "WNT_WKT"),
-    #     ("1", "MSH"),
-    #     ("2", "CTL"),
-    #     ("3", "CPS"),
-    #     ("4", "all"),
-    # ]
+    test_domains = [
+        ("0", "WNT_WKT"),
+        ("1", "MSH"),
+        ("2", "CTL"),
+        ("3", "CPS"),
+        ("4", "all"),
+    ]
 
     # For getting classification thresholds form dev data.
-    test_domains = [("4", "all")]
+    # test_domains = [("4", "all")]
 
     for domain_id, domain in test_domains:
         print(
@@ -378,28 +378,28 @@ if __name__ == "__main__":
         with open(probs_pkl_file, "wb") as pkl_file:
             pickle.dump(all_preds, pkl_file)
 
-        # def to_labels(probs, threshold):
-        #     return (probs <= threshold).astype("int")
+        def to_labels(probs, threshold):
+            return (probs <= threshold).astype("int")
 
-        # classification_thresh = inference_params["classification_thresh"]
+        classification_thresh = inference_params["classification_thresh"]
 
-        # assert (
-        #     classification_thresh is not None
-        # ), f"Specify classification_thresh. It is: {classification_thresh} now."
+        assert (
+            classification_thresh is not None
+        ), f"Specify classification_thresh. It is: {classification_thresh} now."
 
-        # all_preds = to_labels(
-        #     probs=np.array(all_preds), threshold=classification_thresh
-        # )
-        # scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
+        all_preds = to_labels(
+            probs=np.array(all_preds), threshold=classification_thresh
+        )
+        scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 
-        # print(f"all_labels: {len(all_labels)}, {all_labels}", flush=True)
-        # print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+        print(f"all_labels: {len(all_labels)}, {all_labels}", flush=True)
+        print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
-        # print(flush=True)
-        # print(
-        #     f"******* Results on domain_id: {domain_id}, domain: {domain} records: {domain_data_df.shape[0]}*******",
-        #     flush=True,
-        # )
-        # for key, value in scores.items():
-        #     print(key, ":", value, flush=True)
-        # print(flush=True)
+        print(flush=True)
+        print(
+            f"******* Results on domain_id: {domain_id}, domain: {domain} records: {domain_data_df.shape[0]}*******",
+            flush=True,
+        )
+        for key, value in scores.items():
+            print(key, ":", value, flush=True)
+        print(flush=True)
