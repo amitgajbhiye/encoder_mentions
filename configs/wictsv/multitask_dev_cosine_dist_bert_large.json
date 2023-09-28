@@ -9,7 +9,8 @@
     },
     "model_params": {
         "hf_checkpoint_name": "bert-large-uncased",
-        "hf_model_path": "/home/amit/hf_pretrained_models/bert_large_mlm/model"
+        "hf_model_path": "/home/amit/hf_pretrained_models/bert_large_mlm/model",
+        "run_mode": "inference"
     },
     "inference_params": {
         "model_type": "multitask",
