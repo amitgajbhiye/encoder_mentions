@@ -295,16 +295,16 @@ if __name__ == "__main__":
     # test_domain: '2': 216, - CTL
     # test_domain: '3': 168, - CPS
 
-    test_domains = [
-        ("0", "WNT_WKT"),
-        ("1", "MSH"),
-        ("2", "CTL"),
-        ("3", "CPS"),
-        ("4", "all"),
-    ]
+    # test_domains = [
+    #     ("0", "WNT_WKT"),
+    #     ("1", "MSH"),
+    #     ("2", "CTL"),
+    #     ("3", "CPS"),
+    #     ("4", "all"),
+    # ]
 
     # For getting classification thresholds form dev data.
-    # test_domains = [("4", "all")]
+    test_domains = [("4", "all")]
 
     for domain_id, domain in test_domains:
         print(
