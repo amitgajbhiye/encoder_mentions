@@ -28,7 +28,7 @@ from transformers import (
 )
 
 from early_stop import EarlyStopping
-from je_utils import read_config, set_seed
+from je_utils import read_config, set_seed, calculate_inbatch_cross_entropy_loss
 
 warnings.filterwarnings("ignore")
 
@@ -225,19 +225,29 @@ class ModelMentionEncoder(nn.Module):
         )
 
         self.run_mode = model_params["run_mode"]
+        self.loss_type = model_params["loss_type"]
+
         assert self.run_mode in (
             "train",
             "test",
             "inference",
         ), f"Wrong run_mode: {self.run_mode}"
 
-        if self.run_mode == "train":
+        if (self.run_mode == "train") and (self.loss_type == "contrastive"):
             self.miner = miners.MultiSimilarityMiner()
             self.use_hard_pair = model_params["use_hard_pair"]
-            self.loss_fn = losses.NTXentLoss(temperature=model_params["tau"])
+            self.contrastive_loss_fn = losses.NTXentLoss(
+                temperature=model_params["tau"]
+            )
+            log.info(f"loss_function: {self.contrastive_loss_fn}")
+
+        elif (self.run_mode == "train") and (self.loss_type == "cross_entropy"):
+            self.cross_entropy_loss = nn.BCEWithLogitsLoss()
+            log.info(f"loss_function: {self.cross_entropy_loss}")
 
         log.info(f"log.info: {self.run_mode}")
         log.info(f"model_class : {model_class}")
+        log.info(f"loss_type: {self.loss_type}")
 
     def forward(
         self,
@@ -275,7 +285,7 @@ class ModelMentionEncoder(nn.Module):
         mask_vectors = get_mask_token_embeddings(last_layer_hidden_states=hidden_states)
 
         loss = None
-        if self.run_mode == "train":
+        if (self.run_mode == "train") and (self.loss_type == "contrastive"):
             emb_all = torch.cat([mask_vectors, pretrained_con_embeds], dim=0)
             print(f"emb_all :{emb_all.shape}", flush=True)
 
@@ -284,9 +294,14 @@ class ModelMentionEncoder(nn.Module):
 
             if self.use_hard_pair:
                 hard_pairs = self.miner(emb_all, labels)
-                loss = self.loss_fn(emb_all, labels, hard_pairs)
+                loss = self.contrastive_loss_fn(emb_all, labels, hard_pairs)
             else:
-                loss = self.loss_fn(emb_all, labels)
+                loss = self.contrastive_loss_fn(emb_all, labels)
+
+        elif (self.run_mode == "train") and (self.loss_type == "cross_entropy"):
+            loss, _, _ = calculate_inbatch_cross_entropy_loss(
+                pretrained_con_embeds, mask_vectors, self.cross_entropy_loss, device
+            )
 
         return loss, mask_vectors
 
