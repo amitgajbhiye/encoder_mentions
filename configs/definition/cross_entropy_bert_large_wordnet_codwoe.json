@@ -1,0 +1,36 @@
+{
+    "experiment_name": "cross_entropy_bert_large_wordnet_codwoe_definition_encoder",
+    "log_dirctory": "definition_enc",
+    "dataset_params": {
+        "dataset_name": "word_definition",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 80,
+        "train_file_path": "data/definition/wordnet_codwoe/train_wordnet_codwoe.tsv",
+        "val_file_path": "data/definition/wordnet_codwoe/val_wordnet_codwoe.tsv",
+        "test_file_path": null
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
+        "tau": 0.05,
+        "use_hard_pair": false,
+        "run_mode": "train",
+        "loss_type": "cross_entropy"
+    },
+    "training_params": {
+        "load_pretrained": false,
+        "pretrained_model_path": null,
+        "pretrained_con_embeds_path": "data/definition/definition_enc_wordnetcodwoe_con_embeds_ent_bertlarge_cnetpchatgpt100_concept_embeddings.pkl",
+        "batch_size": 32,
+        "lr_schedule":"cosine",
+        "lr": 2e-6,
+        "max_epochs": 100,
+        "warmup_ratio": 0,
+        "patience_early_stopping": 10,
+        "save_dir": "trained_models/definition_encoder",
+        "model_name": "cross_entropy_bert_large_wordnet_codwoe_definition_encoder.pt",
+        "weight_decay": 0.01
+    }
+    
+}

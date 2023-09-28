@@ -28,7 +28,7 @@ from transformers import (
 )
 
 from early_stop import EarlyStopping
-from je_utils import read_config, set_seed, calculate_inbatch_cross_entropy_loss
+from je_utils import calculate_inbatch_cross_entropy_loss, read_config, set_seed
 
 warnings.filterwarnings("ignore")
 
@@ -146,12 +146,6 @@ class DatasetConceptSentence(Dataset):
         labels = self.data_df["labels"][idx]
 
         return {"concept": concept, "sent": sent, "labels": labels}
-
-    # def mask_word_in_sent(self, con, sent):
-    #     srch = re.search(con, sent, re.IGNORECASE)
-    #     mask_sent = sent.replace(sent[srch.start() : srch.end()], self.mask_token, 1)
-
-    #     return mask_sent
 
     def check_whole_word_in_sent(self, concept, sent):
         def has_metacharacters(word):
