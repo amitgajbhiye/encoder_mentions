@@ -17,6 +17,6 @@
 
 conda activate venv
 
-CUDA_VISIBLE_DEVICES=0, python3 src/coda_evaluation.py --config configs/coda21/multitask_bert_large_580kdata.json
+CUDA_VISIBLE_DEVICES=0 python3 src/coda_evaluation.py --config configs/coda21/multitask_bert_large_580kdata.json
 
 echo 'Job Finished !!!'
