@@ -1,0 +1,26 @@
+{
+    "experiment_name": "multitask_bert_large_580kdata",
+    "log_dirctory": "coda21_evaluation",
+    "dataset_params": {
+        "dataset_name": "coda21",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/home/amit/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 120
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/home/amit/hf_pretrained_models/bert_large_mlm/model",
+        "run_mode": "inference",
+        "loss_type": null
+    },
+    "inference_params": {
+        "model_type": "multitask",
+    	"data_folder": "data/coda21",
+    	"sentence_model": "multitask_bert_large_580kdata",
+    	"save_dir": "output",
+        "pretrained_mention_model_path": null,
+        "pretrained_definition_model_path": null,
+        "pretrained_multitask_model_path": "trained_models/multitask_encoder_pretrain/bert_large_multitask_580kdata_pretrain.pt"
+
+    }
+}
