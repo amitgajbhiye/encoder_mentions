@@ -35,6 +35,13 @@ from torch.utils.data import DataLoader, Dataset, SequentialSampler
 warnings.filterwarnings("ignore")
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+if device == torch.device("cpu"):
+    print(f"CPU is used to get the embedding, might be slow", flush=True)
+else:
+    print(f"GPU is used to get the embedding.", flush=True)
+
+
 CLASSES = {
     "bert-base-uncased": (BertModel, BertForMaskedLM, BertTokenizer, 103),
     "bert-large-uncased": (
