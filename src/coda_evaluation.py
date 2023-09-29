@@ -183,19 +183,6 @@ def multitask_get_context_mention_embeds(
     with torch.no_grad():
         outputs = multitask_model(input_ids_and_labels)
 
-    # return_dict = {
-    #     "loss": loss,
-    #     ###
-    #     "con_prop_masks": con_prop_masks,
-    #     "prop_masks": prop_masks,
-    #     ###
-    #     "con_def_masks": con_def_masks,
-    #     "def_masks": def_masks,
-    #     ###
-    #     "con_men_masks": con_men_masks,
-    #     "men_masks": men_masks,
-    # }
-
     mention_vectors = outputs["men_masks"].cpu().numpy()
     def_vectors = outputs["def_masks"].cpu().numpy()
 
