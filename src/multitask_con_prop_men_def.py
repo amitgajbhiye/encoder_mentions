@@ -382,7 +382,9 @@ class JointConceptPropDefMen(nn.Module):
             self.contrastive_loss_fn = losses.NTXentLoss(
                 temperature=model_params["tau"]
             )
+
         log.info(f"run_mode: {self.run_mode}")
+        log.info(f"loss_type: {self.loss_type}")
 
     def get_mask_token_embeddings(self, input_ids, last_layer_hidden_states):
         _, mask_token_index = (input_ids == torch.tensor(self.mask_token_id)).nonzero(
