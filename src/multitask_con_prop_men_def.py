@@ -372,6 +372,8 @@ class JointConceptPropDefMen(nn.Module):
         )
 
         self.run_mode = model_params["run_mode"]
+        self.loss_type = model_params["loss_type"]
+
         if self.run_mode == "train":
             self.cross_entropy_loss = nn.BCEWithLogitsLoss()
 
@@ -465,17 +467,27 @@ class JointConceptPropDefMen(nn.Module):
                     con_def_hidden_states,
                 )  #####
 
-                # Contrastive loss
-                con_def_all_embed = torch.cat([def_masks, con_def_masks], dim=0)
+                if self.loss_type == "contrastive":
+                    # Contrastive loss
+                    con_def_all_embed = torch.cat([def_masks, con_def_masks], dim=0)
 
-                con_defs_labels = torch.tensor(
-                    input_ids_and_labels["con_defs_labels"]
-                ).to(device=device)
-                con_defs_labels = torch.cat([con_defs_labels, con_defs_labels], dim=0)
+                    con_defs_labels = torch.tensor(
+                        input_ids_and_labels["con_defs_labels"]
+                    ).to(device=device)
+                    con_defs_labels = torch.cat(
+                        [con_defs_labels, con_defs_labels], dim=0
+                    )
 
-                loss_contra_con_def = self.contrastive_loss_fn(
-                    con_def_all_embed, con_defs_labels
-                )
+                    loss_contra_con_def = self.contrastive_loss_fn(
+                        con_def_all_embed, con_defs_labels
+                    )
+                elif self.loss_type == "cross_entropy":
+                    loss_contra_con_def, _, _ = calculate_inbatch_cross_entropy_loss(
+                        concept_embeddings=con_def_masks,
+                        property_embeddings=def_masks,
+                        loss_fn=self.cross_entropy_loss,
+                        device=device,
+                    )
             else:
                 loss_contra_con_def = 0.0
                 con_def_masks = None
@@ -508,27 +520,40 @@ class JointConceptPropDefMen(nn.Module):
                     con_men_hidden_states,
                 )  #####
 
-                # Contrastive loss
-                con_men_all_embed = torch.cat([men_masks, con_men_masks], dim=0)
+                if self.loss_type == "contrastive":
+                    # Contrastive loss
+                    con_men_all_embed = torch.cat([men_masks, con_men_masks], dim=0)
 
-                con_mens_labels = torch.tensor(
-                    input_ids_and_labels["con_mens_labels"]
-                ).to(device=device)
+                    con_mens_labels = torch.tensor(
+                        input_ids_and_labels["con_mens_labels"]
+                    ).to(device=device)
 
-                print(f"con_men_all_embed.shape: {con_men_all_embed.shape}")
-                print(
-                    f"before_con_mens_labels.shape: {con_mens_labels.shape}", flush=True
-                )
+                    print(f"con_men_all_embed.shape: {con_men_all_embed.shape}")
+                    print(
+                        f"before_con_mens_labels.shape: {con_mens_labels.shape}",
+                        flush=True,
+                    )
 
-                con_mens_labels = torch.cat([con_mens_labels, con_mens_labels], dim=0)
+                    con_mens_labels = torch.cat(
+                        [con_mens_labels, con_mens_labels], dim=0
+                    )
 
-                print(
-                    f"after_con_mens_labels.shape: {con_mens_labels.shape}", flush=True
-                )
+                    print(
+                        f"after_con_mens_labels.shape: {con_mens_labels.shape}",
+                        flush=True,
+                    )
 
-                loss_contra_con_men = self.contrastive_loss_fn(
-                    con_men_all_embed, con_mens_labels
-                )
+                    loss_contra_con_men = self.contrastive_loss_fn(
+                        con_men_all_embed, con_mens_labels
+                    )
+                elif self.loss_type == "cross_entropy":
+                    loss_contra_con_men, _, _ = calculate_inbatch_cross_entropy_loss(
+                        concept_embeddings=con_men_masks,
+                        property_embeddings=men_masks,
+                        loss_fn=self.cross_entropy_loss,
+                        device=device,
+                    )
+
             else:
                 loss_contra_con_men = 0.0
                 con_men_masks = None
