@@ -3,8 +3,7 @@
 ### Get Mention and Definition Embeddings from Pretrained Models
 ```
 
-install git-lfs (https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage)
-
+# Install Git LFS (https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage)
 #Clone the repo
 git clone git@github.com:amitgajbhiye/encoder_mentions.git
 
