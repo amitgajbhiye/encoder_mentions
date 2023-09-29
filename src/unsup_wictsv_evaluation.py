@@ -295,16 +295,20 @@ if __name__ == "__main__":
     # test_domain: '2': 216, - CTL
     # test_domain: '3': 168, - CPS
 
-    test_domains = [
-        ("0", "WNT_WKT"),
-        ("1", "MSH"),
-        ("2", "CTL"),
-        ("3", "CPS"),
-        ("4", "all"),
-    ]
+    data_type = config["dataset_params"]["dataset_name"]
 
-    # For getting classification thresholds form dev data.
-    # test_domains = [("4", "all")]
+    if data_type == "wictsv_devset":
+        # For getting classification thresholds form dev data.
+        test_domains = [("4", "all")]
+
+    else:
+        test_domains = [
+            ("0", "WNT_WKT"),
+            ("1", "MSH"),
+            ("2", "CTL"),
+            ("3", "CPS"),
+            ("4", "all"),
+        ]
 
     for domain_id, domain in test_domains:
         print(
@@ -377,6 +381,9 @@ if __name__ == "__main__":
 
         with open(probs_pkl_file, "wb") as pkl_file:
             pickle.dump(all_preds, pkl_file)
+
+        if data_type == "wictsv_devset":
+            break
 
         def to_labels(probs, threshold):
             return (probs <= threshold).astype("int")
