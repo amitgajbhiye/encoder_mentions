@@ -30,6 +30,14 @@ from je_utils import read_config, set_seed
 warnings.filterwarnings("ignore")
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+if device == torch.device("cpu"):
+    print(
+        f"*** CPU is used to get the embedding, might be slow; Use a GPU for faster processing",
+        flush=True,
+    )
+else:
+    print(f"GPU is used to get the embedding.", flush=True)
+
 CLASSES = {
     "bert-base-uncased": (BertModel, BertForMaskedLM, BertTokenizer, 103),
     "bert-large-uncased": (
@@ -247,7 +255,7 @@ def prepare_data_and_models(config):
     if load_pretrained:
         log.info(f"load_pretrained is : {load_pretrained}")
         log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
-        model.load_state_dict(torch.load(pretrained_model_path))
+        model.load_state_dict(torch.load(pretrained_model_path, map_location=device))
         log.info(f"Loaded Pretrained Model")
 
     log.info(f"model_class : {model.__class__.__name__}")
