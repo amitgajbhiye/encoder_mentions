@@ -2,6 +2,9 @@
 
 ### Get Mention and Definition Embeddings from Pretrained Models
 ```
+
+install git-lfs (https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage)
+
 #Clone the repo
 git clone git@github.com:amitgajbhiye/encoder_mentions.git
 
@@ -16,6 +19,7 @@ python3 src/get_mention_embeddings.py --config_file configs/get_mention_embeddin
 
 #To get definition embeddings run:
 python3 src/get_definition_embeddings.py --config_file configs/get_definition_embeddings/get_definition_embeds.json
+
 ```
 
 The `config_file` has the required parameters to guide the mention and definition embeddings generation. The default configuration file mentioned above for mention and definition generation generates the embeddings for the dummy science taxonomy mentiond in `word_sent_file` from the downloaded models saved in `trained models` directory.

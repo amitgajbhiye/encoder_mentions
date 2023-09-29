@@ -275,7 +275,9 @@ def prepare_data_and_models(config):
     if load_pretrained:
         log.info(f"load_pretrained is : {load_pretrained}")
         log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
-        model.load_state_dict(torch.load(pretrained_model_path))
+
+        model.load_state_dict(torch.load(pretrained_model_path, map_location=device))
+
         log.info(f"Loaded Pretrained Model")
 
     log.info(f"model_class : {model.__class__.__name__}")
