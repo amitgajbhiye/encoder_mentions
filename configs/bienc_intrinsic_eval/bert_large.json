@@ -1,0 +1,26 @@
+{
+    "experiment_name": "bert_large",
+    "log_dirctory": "bienc_intrinsic_eval",
+    "dataset_params": {
+        "dataset_name": "mcrae_prop_split",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 120
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
+        "run_mode": "train",
+        "loss_type": "cross_entropy"
+    },
+    "inference_params": {
+        "model_type": null,
+    	"data_folder": "data/coda21",
+    	"sentence_model": "bert_large",
+    	"save_dir": "output",
+        "pretrained_mention_model_path": null,
+        "pretrained_definition_model_path": null,
+        "pretrained_multitask_model_path": "trained_models/multitask_encoder_pretrain/cross_entropy_bert_large_multitask_580kdata_pretrain.pt"
+
+    }
+}
