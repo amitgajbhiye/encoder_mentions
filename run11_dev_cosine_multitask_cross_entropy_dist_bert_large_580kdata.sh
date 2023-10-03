@@ -17,6 +17,6 @@
 
 conda activate venv
 
-CUDA_VISIBLE_DEVICES=0 python3 src/unsup_wictsv_evaluation.py --config configs/wictsv/multitask_dev_cosine_dist_bert_large.json
+CUDA_VISIBLE_DEVICES=0 python3 src/unsup_wictsv_evaluation.py --config configs/wictsv/dev_cosine_multitask_cross_entropy_dist_bert_large_580kdata.json
 
 echo 'Job Finished !!!'
