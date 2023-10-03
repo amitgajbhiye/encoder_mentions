@@ -198,8 +198,9 @@ def main(config):
     data_folder = inference_params["data_folder"]
     sentence_model = inference_params["sentence_model"]
     save_dir = inference_params["save_dir"]
-    results_dir = os.path.join(save_dir, sentence_model)
-    os.makedirs(results_dir, exist_ok=False)
+
+    # results_dir = os.path.join(save_dir, sentence_model)
+    # os.makedirs(results_dir, exist_ok=False)
 
     model_type = inference_params["model_type"]
 
