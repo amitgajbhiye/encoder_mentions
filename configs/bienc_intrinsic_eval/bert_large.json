@@ -18,9 +18,9 @@
     	"data_folder": "data/coda21",
     	"sentence_model": "bert_large",
     	"save_dir": "output",
-        "pretrained_mention_model_path": null,
-        "pretrained_definition_model_path": null,
-        "pretrained_multitask_model_path": "trained_models/multitask_encoder_pretrain/cross_entropy_bert_large_multitask_580kdata_pretrain.pt"
+        "pretrained_mention_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
+        "pretrained_definition_model_path": "trained_models/definition_encoder/bert_large_wordnet_codwoe.pt",
+        "pretrained_multitask_model_path": null
 
     }
 }
