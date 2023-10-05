@@ -273,6 +273,9 @@ if __name__ == "__main__":
         print(f"Creating_BiEncoderConceptProperty_Model.")
         un_wictsv = BiEncoderConceptProperty(config=config)
 
+    for name, parameter in un_wictsv.named_parameters():
+        print(f"layer_name: {name}", flush=True)
+
     print(f"++++++++++++++++++++++++++++++")
 
     # inference_params = config["inference_params"]
