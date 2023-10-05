@@ -57,6 +57,11 @@ class BiEncoderConceptProperty(nn.Module):
             parameter.requires_grad = False
 
         # ++++++++++++++ load concept property model here ++++++++++++++++++
+        # Creating Concept Property BiEncoder Model
+        self.con_prop_bienc = ConceptPropertyModel(model_params=model_params)
+
+        for name, parameter in self.con_prop_bienc.named_parameters():
+            print(f"layer_name: {name}", flush=True)
 
         print(
             f"Mention Model is loaded from : {pretrained_mention_model_path}",
@@ -244,7 +249,7 @@ def _read_tsv(input_file, quotechar=None):
 if __name__ == "__main__":
     set_seed(1)
 
-    parser = ArgumentParser(description="WiCTSV Evaluation")
+    parser = ArgumentParser(description="BiEncoder Intrinsic Evaluation")
 
     parser.add_argument(
         "--config_file",
@@ -265,159 +270,162 @@ if __name__ == "__main__":
     if model_type == "multitask":
         un_wictsv = MultitaskUnsupervisedWicTsv(config=config)
     else:
-        un_wictsv = UnsupervisedWicTsv(config=config)
+        print(f"Creating_BiEncoderConceptProperty_Model.")
+        un_wictsv = BiEncoderConceptProperty(config=config)
 
-    inference_params = config["inference_params"]
-    batch_size = inference_params["batch_size"]
-    wictsv_file = inference_params["wictsv_test_file"]
+    print(f"++++++++++++++++++++++++++++++")
 
-    data = _read_tsv(wictsv_file)[1:]  # word idx context definition domain hypernym
-    data_df = pd.DataFrame.from_records(data)
-    data_df.rename(
-        columns={
-            0: "word",
-            1: "idx",
-            2: "context",
-            3: "definition",
-            4: "domain",
-            5: "hypernym",
-        },
-        inplace=True,
-    )
+    # inference_params = config["inference_params"]
+    # batch_size = inference_params["batch_size"]
+    # wictsv_file = inference_params["wictsv_test_file"]
 
-    # Reading Labels
-    if inference_params["label_file"]:
-        label = np.array(_read_tsv(inference_params["label_file"])).flatten()
-        label = np.array([1 if l == "T" else 0 for l in label], dtype=int)
+    # data = _read_tsv(wictsv_file)[1:]  # word idx context definition domain hypernym
+    # data_df = pd.DataFrame.from_records(data)
+    # data_df.rename(
+    #     columns={
+    #         0: "word",
+    #         1: "idx",
+    #         2: "context",
+    #         3: "definition",
+    #         4: "domain",
+    #         5: "hypernym",
+    #     },
+    #     inplace=True,
+    # )
 
-        print(f"label : {label}", flush=True)
+    # # Reading Labels
+    # if inference_params["label_file"]:
+    #     label = np.array(_read_tsv(inference_params["label_file"])).flatten()
+    #     label = np.array([1 if l == "T" else 0 for l in label], dtype=int)
 
-        assert (
-            data_df.shape[0] == label.shape[0]
-        ), "Number of input records is not equal to labels"
+    #     print(f"label : {label}", flush=True)
 
-        data_df["label"] = label
+    #     assert (
+    #         data_df.shape[0] == label.shape[0]
+    #     ), "Number of input records is not equal to labels"
 
-    print(f"data_df.columns : {data_df.columns}", flush=True)
-    print(f"data_df : {data_df}", flush=True)
+    #     data_df["label"] = label
 
-    # test_domain: '0': 717, - WNT/WKT # -1 in configfile
-    # test_domain: '1': 205, - MSH
-    # test_domain: '2': 216, - CTL
-    # test_domain: '3': 168, - CPS
+    # print(f"data_df.columns : {data_df.columns}", flush=True)
+    # print(f"data_df : {data_df}", flush=True)
 
-    data_type = config["dataset_params"]["dataset_name"]
+    # # test_domain: '0': 717, - WNT/WKT # -1 in configfile
+    # # test_domain: '1': 205, - MSH
+    # # test_domain: '2': 216, - CTL
+    # # test_domain: '3': 168, - CPS
 
-    if data_type == "wictsv_devset":
-        # For getting classification thresholds form dev data.
-        test_domains = [("4", "all")]
+    # data_type = config["dataset_params"]["dataset_name"]
 
-    else:
-        test_domains = [
-            ("0", "WNT_WKT"),
-            ("1", "MSH"),
-            ("2", "CTL"),
-            ("3", "CPS"),
-            ("4", "all"),
-        ]
+    # if data_type == "wictsv_devset":
+    #     # For getting classification thresholds form dev data.
+    #     test_domains = [("4", "all")]
 
-    for domain_id, domain in test_domains:
-        print(
-            f"******* Testing on domain_id: {domain_id}, domain: {domain} *******",
-            flush=True,
-        )
+    # else:
+    #     test_domains = [
+    #         ("0", "WNT_WKT"),
+    #         ("1", "MSH"),
+    #         ("2", "CTL"),
+    #         ("3", "CPS"),
+    #         ("4", "all"),
+    #     ]
 
-        if domain_id in ("0", "1", "2", "3"):
-            domain_data_df = data_df[data_df["domain"] == domain_id]
-        else:
-            print(f"*** Testing on All Domains ***")
-            domain_data_df = data_df
+    # for domain_id, domain in test_domains:
+    #     print(
+    #         f"******* Testing on domain_id: {domain_id}, domain: {domain} *******",
+    #         flush=True,
+    #     )
 
-        print(f"num_test_instance : {len(domain_data_df)}", flush=True)
+    #     if domain_id in ("0", "1", "2", "3"):
+    #         domain_data_df = data_df[data_df["domain"] == domain_id]
+    #     else:
+    #         print(f"*** Testing on All Domains ***")
+    #         domain_data_df = data_df
 
-        all_preds, all_labels = [], []
+    #     print(f"num_test_instance : {len(domain_data_df)}", flush=True)
 
-        for batch_no, i in enumerate(range(0, len(domain_data_df), batch_size)):
-            print(flush=True)
-            print(
-                f"Processing Batch : {batch_no} / {len(domain_data_df) // batch_size + 1}",
-                flush=True,
-            )
+    #     all_preds, all_labels = [], []
 
-            words, context_sents, definitions, batch_labels = (
-                [],
-                [],
-                [],
-                [],
-            )
+    #     for batch_no, i in enumerate(range(0, len(domain_data_df), batch_size)):
+    #         print(flush=True)
+    #         print(
+    #             f"Processing Batch : {batch_no} / {len(domain_data_df) // batch_size + 1}",
+    #             flush=True,
+    #         )
 
-            batch = domain_data_df.values[i : i + batch_size]
+    #         words, context_sents, definitions, batch_labels = (
+    #             [],
+    #             [],
+    #             [],
+    #             [],
+    #         )
 
-            for word, _, context, definition, _, _, label in batch:
-                words.append(word)
-                context_sents.append(
-                    context.lower().replace(
-                        word.lower(), un_wictsv.tokenizer.mask_token
-                    )
-                )
-                definitions.append(
-                    un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
-                )
-                batch_labels.append(label)
+    #         batch = domain_data_df.values[i : i + batch_size]
 
-            print(f"***words : {len(words)}, {words}", flush=True)
-            print(flush=True)
-            print(
-                f"***context_sents : {len(context_sents)}, {context_sents}", flush=True
-            )
-            print(flush=True)
-            print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
-            print(f"***batch_labels : {len(batch_labels)}, {batch_labels}", flush=True)
+    #         for word, _, context, definition, _, _, label in batch:
+    #             words.append(word)
+    #             context_sents.append(
+    #                 context.lower().replace(
+    #                     word.lower(), un_wictsv.tokenizer.mask_token
+    #                 )
+    #             )
+    #             definitions.append(
+    #                 un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
+    #             )
+    #             batch_labels.append(label)
 
-            assert len(context_sents) == len(
-                definitions
-            ), "In batch context_sents len not equal to definitions."
+    #         print(f"***words : {len(words)}, {words}", flush=True)
+    #         print(flush=True)
+    #         print(
+    #             f"***context_sents : {len(context_sents)}, {context_sents}", flush=True
+    #         )
+    #         print(flush=True)
+    #         print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
+    #         print(f"***batch_labels : {len(batch_labels)}, {batch_labels}", flush=True)
 
-            cosine_distance = un_wictsv(
-                context_sents=context_sents, definition_sents=definitions
-            )
+    #         assert len(context_sents) == len(
+    #             definitions
+    #         ), "In batch context_sents len not equal to definitions."
 
-            all_preds.extend(cosine_distance)
-            all_labels.extend(batch_labels)
+    #         cosine_distance = un_wictsv(
+    #             context_sents=context_sents, definition_sents=definitions
+    #         )
 
-        probs_pkl_file = os.path.join(
-            inference_params["save_dir"],
-            f"{config['experiment_name']}_{domain_id}_{domain}.pkl",
-        )
+    #         all_preds.extend(cosine_distance)
+    #         all_labels.extend(batch_labels)
 
-        with open(probs_pkl_file, "wb") as pkl_file:
-            pickle.dump(all_preds, pkl_file)
+    #     probs_pkl_file = os.path.join(
+    #         inference_params["save_dir"],
+    #         f"{config['experiment_name']}_{domain_id}_{domain}.pkl",
+    #     )
 
-        if data_type == "wictsv_devset":
-            break
+    #     with open(probs_pkl_file, "wb") as pkl_file:
+    #         pickle.dump(all_preds, pkl_file)
 
-        def to_labels(probs, threshold):
-            return (probs <= threshold).astype("int")
+    #     if data_type == "wictsv_devset":
+    #         break
 
-        classification_thresh = inference_params["classification_thresh"]
+    #     def to_labels(probs, threshold):
+    #         return (probs <= threshold).astype("int")
 
-        assert (
-            classification_thresh is not None
-        ), f"Specify classification_thresh. It is: {classification_thresh} now."
+    #     classification_thresh = inference_params["classification_thresh"]
 
-        all_preds = to_labels(
-            probs=np.array(all_preds), threshold=classification_thresh
-        )
-        scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
+    #     assert (
+    #         classification_thresh is not None
+    #     ), f"Specify classification_thresh. It is: {classification_thresh} now."
 
-        print(f"all_labels: {len(all_labels)}, {all_labels}", flush=True)
-        print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+    #     all_preds = to_labels(
+    #         probs=np.array(all_preds), threshold=classification_thresh
+    #     )
+    #     scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 
-        print(flush=True)
-        print(
-            f"******* Results on domain_id: {domain_id}, domain: {domain} records: {domain_data_df.shape[0]}*******",
-            flush=True,
-        )
-        for key, value in scores.items():
-            print(key, ":", value, flush=True)
-        print(flush=True)
+    #     print(f"all_labels: {len(all_labels)}, {all_labels}", flush=True)
+    #     print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+
+    #     print(flush=True)
+    #     print(
+    #         f"******* Results on domain_id: {domain_id}, domain: {domain} records: {domain_data_df.shape[0]}*******",
+    #         flush=True,
+    #     )
+    #     for key, value in scores.items():
+    #         print(key, ":", value, flush=True)
+    #     print(flush=True)
