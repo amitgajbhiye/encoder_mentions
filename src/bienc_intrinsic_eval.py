@@ -62,6 +62,12 @@ class BiEncoderConceptProperty(nn.Module):
 
         for name, parameter in self.con_prop_bienc.named_parameters():
             print(f"layer_name: {name}", flush=True)
+            if "concept_encoder" in name:
+                print(
+                    f"before_false_parameter.requires_grad: {parameter.requires_grad}"
+                )
+                parameter.requires_grad = False
+                print(f"after_false_parameter.requires_grad: {parameter.requires_grad}")
 
         print(
             f"Mention Model is loaded from : {pretrained_mention_model_path}",
@@ -273,6 +279,7 @@ if __name__ == "__main__":
         print(f"Creating_BiEncoderConceptProperty_Model.")
         un_wictsv = BiEncoderConceptProperty(config=config)
 
+    print(f"full_BiEncoderConceptProperty_Model_parameters:", flush=True, end="\n")
     for name, parameter in un_wictsv.named_parameters():
         print(f"layer_name: {name}", flush=True)
 
