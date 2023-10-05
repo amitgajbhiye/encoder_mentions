@@ -24,119 +24,7 @@ from multitask_con_prop_men_def import JointConceptPropDefMen
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-
-class BiEncoderConceptProperty(nn.Module):
-    def __init__(self, config):
-        super(BiEncoderConceptProperty, self).__init__()
-
-        inference_params = config["inference_params"]
-        dataset_params = config["dataset_params"]
-        model_params = config["model_params"]
-
-        pretrained_mention_model_path = inference_params[
-            "pretrained_mention_model_path"
-        ]
-        pretrained_definition_model_path = inference_params[
-            "pretrained_definition_model_path"
-        ]
-
-        # Creating Mention Model
-        self.men_model = nn.DataParallel(mention_encoder(model_params=model_params))
-        self.men_model.to(device=device)
-
-        # Creating Definition Model
-        self.def_model = nn.DataParallel(definition_encoder(model_params=model_params))
-        self.def_model.to(device=device)
-
-        self.men_model.load_state_dict(torch.load(pretrained_mention_model_path))
-        for name, parameter in self.men_model.named_parameters():
-            parameter.requires_grad = False
-
-        self.def_model.load_state_dict(torch.load(pretrained_definition_model_path))
-        for name, parameter in self.def_model.named_parameters():
-            parameter.requires_grad = False
-
-        # ++++++++++++++ load concept property model here ++++++++++++++++++
-        # Creating Concept Property BiEncoder Model
-        self.con_prop_bienc = ConceptPropertyModel(model_params=model_params)
-
-        for name, parameter in self.con_prop_bienc.named_parameters():
-            print(f"layer_name: {name}", flush=True)
-            if "concept_encoder" in name:
-                print(
-                    f"before_false_parameter.requires_grad: {parameter.requires_grad}"
-                )
-                parameter.requires_grad = False
-                print(f"after_false_parameter.requires_grad: {parameter.requires_grad}")
-
-        print(
-            f"Mention Model is loaded from : {pretrained_mention_model_path}",
-            flush=True,
-        )
-        print(
-            f"Definition Model is loaded from : {pretrained_definition_model_path}",
-            flush=True,
-        )
-
-        self.tokenizer = BertTokenizer.from_pretrained(
-            dataset_params["hf_tokenizer_path"]
-        )
-        self.max_len = dataset_params["max_len"]
-
-    def get_mention_embeds(self, context_sents):
-        ids_dict = self.tokenizer.batch_encode_plus(
-            batch_text_or_text_pairs=context_sents,
-            max_length=self.max_len,
-            add_special_tokens=True,
-            padding="max_length",
-            truncation=True,
-            return_tensors="pt",
-            return_token_type_ids=True,
-        )
-
-        ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
-
-        with torch.no_grad():
-            mention_vectors = self.men_model(pretrained_con_embeds=None, **ids_dict)
-
-        return mention_vectors
-
-    def get_definition_embeds(self, definition_sents):
-        ids_dict = self.tokenizer.batch_encode_plus(
-            batch_text_or_text_pairs=definition_sents,
-            max_length=self.max_len,
-            add_special_tokens=True,
-            padding="max_length",
-            truncation=True,
-            return_tensors="pt",
-            return_token_type_ids=True,
-        )
-
-        ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
-
-        with torch.no_grad():
-            def_vectors = self.def_model(pretrained_con_embeds=None, **ids_dict)
-
-        return def_vectors
-
-    def forward(self, context_sents, definition_sents):
-        mention_embeds = self.get_mention_embeds(context_sents=context_sents)
-        definition_embeds = self.get_definition_embeds(
-            definition_sents=definition_sents
-        )
-
-        print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
-        print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
-
-        cosine_distances = []
-        for men_emb, def_emb in zip(mention_embeds, definition_embeds):
-            cos_dist = distance.cosine(men_emb.cpu().numpy(), def_emb.cpu().numpy())
-            # print(f"cos_dist: {type(cos_dist)}, {cos_dist}")
-            cosine_distances.append(cos_dist.item())
-
-        print(f"cosine_distances : {cosine_distances}", flush=True)
-
-        return cosine_distances
+##########################
 
 
 class MultitaskUnsupervisedWicTsv(nn.Module):
@@ -226,6 +114,139 @@ class MultitaskUnsupervisedWicTsv(nn.Module):
     def forward(self, context_sents, definition_sents):
         mention_embeds, definition_embeds = self.multitask_get_context_mention_embeds(
             context_sents=context_sents, definition_sents=definition_sents
+        )
+
+        print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
+        print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
+
+        cosine_distances = []
+        for men_emb, def_emb in zip(mention_embeds, definition_embeds):
+            cos_dist = distance.cosine(men_emb.cpu().numpy(), def_emb.cpu().numpy())
+            # print(f"cos_dist: {type(cos_dist)}, {cos_dist}")
+            cosine_distances.append(cos_dist.item())
+
+        print(f"cosine_distances : {cosine_distances}", flush=True)
+
+        return cosine_distances
+
+
+##########################
+
+
+class BiEncoderConceptProperty(nn.Module):
+    def __init__(self, config):
+        super(BiEncoderConceptProperty, self).__init__()
+
+        inference_params = config["inference_params"]
+        dataset_params = config["dataset_params"]
+        model_params = config["model_params"]
+
+        pretrained_mention_model_path = inference_params[
+            "pretrained_mention_model_path"
+        ]
+        pretrained_definition_model_path = inference_params[
+            "pretrained_definition_model_path"
+        ]
+
+        pretrained_biencoder_model_path = inference_params[
+            "pretrained_biencoder_model_path"
+        ]
+
+        # Creating Mention Model
+        self.men_model = nn.DataParallel(mention_encoder(model_params=model_params))
+        self.men_model.to(device=device)
+
+        # Creating Definition Model
+        self.def_model = nn.DataParallel(definition_encoder(model_params=model_params))
+        self.def_model.to(device=device)
+
+        self.men_model.load_state_dict(
+            torch.load(pretrained_mention_model_path, map_location=device)
+        )
+        for name, parameter in self.men_model.named_parameters():
+            parameter.requires_grad = False
+
+        self.def_model.load_state_dict(
+            torch.load(pretrained_definition_model_path, map_location=device)
+        )
+        for name, parameter in self.def_model.named_parameters():
+            parameter.requires_grad = False
+
+        # ++++++++++++++ load concept property model here ++++++++++++++++++
+        # Creating Concept Property BiEncoder Model
+        self.con_prop_bienc = ConceptPropertyModel(model_params=model_params)
+        self.con_prop_bienc.load_state_dict(
+            torch.load(pretrained_biencoder_model_path, map_location=device)
+        )
+
+        for name, parameter in self.con_prop_bienc.named_parameters():
+            print(f"layer_name: {name}", flush=True)
+            if "concept_encoder" in name:
+                print(
+                    f"before_false_parameter.requires_grad: {parameter.requires_grad}"
+                )
+                parameter.requires_grad = False
+                print(f"after_false_parameter.requires_grad: {parameter.requires_grad}")
+
+        print(
+            f"mention_model loaded from : {pretrained_mention_model_path}",
+            flush=True,
+        )
+        print(
+            f"definition_model loaded from : {pretrained_definition_model_path}",
+            flush=True,
+        )
+
+        print(
+            f"biencoder_concept_property_model loaded from : {pretrained_biencoder_model_path}",
+            flush=True,
+        )
+
+        self.tokenizer = BertTokenizer.from_pretrained(
+            dataset_params["hf_tokenizer_path"]
+        )
+        self.max_len = dataset_params["max_len"]
+
+    def get_mention_embeds(self, context_sents):
+        ids_dict = self.tokenizer.batch_encode_plus(
+            batch_text_or_text_pairs=context_sents,
+            max_length=self.max_len,
+            add_special_tokens=True,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+            return_token_type_ids=True,
+        )
+
+        ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
+
+        with torch.no_grad():
+            mention_vectors = self.men_model(pretrained_con_embeds=None, **ids_dict)
+
+        return mention_vectors
+
+    def get_definition_embeds(self, definition_sents):
+        ids_dict = self.tokenizer.batch_encode_plus(
+            batch_text_or_text_pairs=definition_sents,
+            max_length=self.max_len,
+            add_special_tokens=True,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+            return_token_type_ids=True,
+        )
+
+        ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
+
+        with torch.no_grad():
+            def_vectors = self.def_model(pretrained_con_embeds=None, **ids_dict)
+
+        return def_vectors
+
+    def forward(self, context_sents, definition_sents):
+        mention_embeds = self.get_mention_embeds(context_sents=context_sents)
+        definition_embeds = self.get_definition_embeds(
+            definition_sents=definition_sents
         )
 
         print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
