@@ -17,6 +17,6 @@
 
 conda activate venv
 
-python3 src/bienc_intrinsic_eval.py --config configs/bienc_intrinsic_eval/bert_large.json
+python3 src/biencoder_intrinsic_eval.py --config configs/bienc_intrinsic_eval/bert_large_bienc_intrinsic_eval.json
 
 echo 'Job Finished !!!'
