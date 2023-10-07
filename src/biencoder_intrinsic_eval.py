@@ -524,13 +524,15 @@ if __name__ == "__main__":
         cv_type = config["training_params"]["cv_type"]
 
     if cv_type == "model_evaluation_property_split":
+        config["training_params"]["num_folds"] = 5
+
         log.info(f'Parameter do_cv : {config["training_params"]["do_cv"]}')
         log.info(
             "Cross Validation for Model Evaluation - Data Splited on Property basis"
         )
         log.info(f"Parameter cv_type : {cv_type}")
+        log.info(f'num_folds: {config["training_params"]["num_folds"]}')
 
-        config["training_params"]["num_folds"] = 5
         model_evaluation_property_cross_validation(config)
 
     elif cv_type == "model_evaluation_concept_property_split":
