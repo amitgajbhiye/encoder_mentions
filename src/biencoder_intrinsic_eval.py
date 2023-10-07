@@ -368,7 +368,7 @@ def train(config, param_dict):
             del loss
             gc.collect()
 
-        log.info(f"train_step: {step}")
+        log.info(f"train_step: {step + 1}")
         train_loss /= step + 1
         log.info(
             "Epoch: %d | train loss: %.4f ",
