@@ -85,7 +85,7 @@ class DatasetConceptProperty(Dataset):
 
     def __getitem__(self, idx):
         concept = self.data_df["concept"][idx]
-        property = self.data_df["sent"][idx]
+        property = self.data_df["property"][idx]
         label = self.data_df["label"][idx]
 
         return {"concept": concept, "property": property, "label": label}
