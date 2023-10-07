@@ -179,7 +179,7 @@ class BiEncoderConceptProperty(nn.Module):
             log.info(f"Freezing Concept Encoder of the Biencoder Model")
 
     def forward(self, ids_dict, pretrained_concept_embeddings=None):
-        label = ids_dict.pop(label)
+        label = ids_dict["label"]
 
         concept_embedding, property_embedding, _ = self.con_prop_bienc(**ids_dict)
 
@@ -200,7 +200,6 @@ def prepare_data_and_models(config):
     ############
     training_params = config["training_params"]
     dataset_params = config["dataset_params"]
-    model_params = config["model_params"]
     ############
 
     log.info(f"{'*' * 50}")
