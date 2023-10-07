@@ -191,7 +191,7 @@ class BiEncoderConceptProperty(nn.Module):
 
         loss = None
         if label is not None:
-            loss = self.bce_loss_function(logits, label)
+            loss = self.bce_loss_function(logits, label.reshape_as(logits))
 
         return (loss, logits, concept_embedding, property_embedding)
 
