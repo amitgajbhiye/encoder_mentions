@@ -4,12 +4,12 @@
     "dataset_params": {
         "dataset_name": "mcrae_property_split",
         "hf_tokenizer_name": "bert-large-uncased",
-        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_uncased/tokenizer",
         "max_len": 32
     },
     "model_params": {
         "hf_checkpoint_name": "bert-large-uncased",
-        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_uncased/model",
         "vector_strategy":"mask_token"
     },
     "training_params": {

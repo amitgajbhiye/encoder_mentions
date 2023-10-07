@@ -460,9 +460,9 @@ def model_evaluation_property_cross_validation(config):
         log.info(f"train_file_path: {train_pkl}")
         log.info(f"test_file_path: {test_pkl}")
 
-        with open(train_pkl, "rb") as train, open(test_pkl, "rb") as test:
-            train_df = pickle.load(train)
-            test_df = pickle.load(test)
+        with open(train_pkl, "rb") as train_file, open(test_pkl, "rb") as test_file:
+            train_df = pickle.load(train_file)
+            test_df = pickle.load(test_file)
 
         log.info(f"fold: {fold_num}")
         log.info(f"train_df: {train_df}")
