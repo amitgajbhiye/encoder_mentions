@@ -359,7 +359,7 @@ def train(config, param_dict):
 
             if (step + 1) % 100 == 0:
                 log.info(
-                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+                    f"Epoch [{epoch}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
                 )
 
             del batch
@@ -372,7 +372,7 @@ def train(config, param_dict):
         train_loss /= step + 1
         log.info(
             "Epoch: %d | train loss: %.4f ",
-            epoch + 1,
+            epoch,
             train_loss,
         )
 
