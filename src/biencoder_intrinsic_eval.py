@@ -449,9 +449,6 @@ def train(config, param_dict):
 
 def model_evaluation_property_cross_validation(config):
     num_folds = config["training_params"]["num_folds"]
-
-    log.info(f'config["training_params"]: {config["training_params"]}')
-
     train_test_data_dir = config["training_params"]["train_test_data_dir"]
 
     all_label, all_pred = [], []
