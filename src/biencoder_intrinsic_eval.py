@@ -150,30 +150,32 @@ class BiEncoderConceptProperty(nn.Module):
         training_params = config["training_params"]
 
         self.con_prop_bienc = ConceptPropertyModel(model_params=model_params)
-
-        pretrained_bienc_model_path = training_params["pretrained_bienc_model_path"]
-
-        self.con_prop_bienc.load_state_dict(
-            torch.load(pretrained_bienc_model_path, map_location=device)
-        )
-        log.info(
-            f"Loading Pretrained Model Weights From : {pretrained_bienc_model_path}"
-        )
-
-        for name, parameter in self.con_prop_bienc.named_parameters():
-            print(f"layer_name: {name}", flush=True)
-            if "concept_encoder" in name:
-                print(
-                    f"before_false_parameter.requires_grad: {parameter.requires_grad}"
-                )
-                parameter.requires_grad = False
-                print(f"after_false_parameter.requires_grad: {parameter.requires_grad}")
-
-        print(
-            f"biencoder_concept_property_model loaded from : {pretrained_bienc_model_path}",
-            flush=True,
-        )
         self.bce_loss_function = nn.BCEWithLogitsLoss()
+
+        load_pretrained = training_params["load_pretrained"]
+        freeze_concept_encoder = training_params["freeze_concept_encoder"]
+
+        if load_pretrained:
+            pretrained_bienc_model_path = training_params["pretrained_bienc_model_path"]
+            self.con_prop_bienc.load_state_dict(
+                torch.load(pretrained_bienc_model_path, map_location=device)
+            )
+            log.info(
+                f"Loading Pretrained BiENcoder Model From : {pretrained_bienc_model_path}"
+            )
+
+        if freeze_concept_encoder:
+            for name, parameter in self.con_prop_bienc.named_parameters():
+                print(f"layer_name: {name}", flush=True)
+                if "concept_encoder" in name:
+                    print(
+                        f"before_false_parameter.requires_grad: {parameter.requires_grad}"
+                    )
+                    parameter.requires_grad = False
+                    print(
+                        f"after_false_parameter.requires_grad: {parameter.requires_grad}"
+                    )
+            log.info(f"Freezing Concept Encoder of the Biencoder Model")
 
     def forward(self, ids_dict, pretrained_concept_embeddings=None):
         label = ids_dict.pop(label)
@@ -202,7 +204,7 @@ def prepare_data_and_models(config):
 
     log.info(f"{'*' * 50}")
     log.info(
-        f"Preparing the model and dataset for fold number: {training_params['fold_num']}"
+        f"Preparing the model and dataset for the fold number: {training_params['fold_num']}"
     )
     log.info(f"{'*' * 50}")
 
@@ -378,12 +380,12 @@ def train(config, param_dict):
 
     log.info(f"Testing the model on Fold : {fold_num}")
     print(f"Testing the model on Fold: {fold_num}")
-    model.eval()
 
     test_dataset = param_dict["test_dataset"]
     test_dataloader = param_dict["test_dataloader"]
-
     fold_test_label, fold_test_pred = [], []
+
+    model.eval()
     for step, batch in enumerate(tqdm(test_dataloader, desc="Test Iteration")):
         print(flush=True)
         print(
@@ -406,7 +408,7 @@ def train(config, param_dict):
         test_batch_label = ids_dict["label"].cpu().numpy().flatten()
 
         with torch.no_grad():
-            loss, test_batch_logits, _, property_embedding = model(
+            loss, test_batch_logits, _, _ = model(
                 ids_dict, pretrained_concept_embeddings=pretrained_con_embeds
             )
 
@@ -430,7 +432,7 @@ def train(config, param_dict):
     print(f"fold_test_pred: {fold_test_pred.shape}, {fold_test_pred}", flush=True)
     print(flush=True)
 
-    log.info(f"Training on fold {fold_num} Finished.")
+    log.info(f"Finished Training on fold: {fold_num}.")
     log.info(f"fold_test_label.shape: {fold_test_label.shape}")
     log.info(f"fold_test_pred.shape: {fold_test_pred.shape}")
     log.info(f"Test scores on Fold: {fold_num}")
@@ -461,8 +463,9 @@ def model_evaluation_property_cross_validation(config):
             train_df = pickle.load(train)
             test_df = pickle.load(test)
 
-        log.info(f"fold: {fold_num}, train_df.shape: {train_df.shape}")
-        log.info(f"fold: {fold_num}, test_df.shape: {test_df.shape}")
+        log.info(f"fold: {fold_num}")
+        log.info(f"train_df: {train_df}")
+        log.info(f"test_df: {test_df}")
 
         config["training_params"]["fold_num"] = fold_num
         config["training_params"]["train_fold_df"] = train_df

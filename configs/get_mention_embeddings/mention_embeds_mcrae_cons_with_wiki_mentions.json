@@ -10,7 +10,7 @@
     },
     "model_params": {
         "hf_checkpoint_name": "bert-large-uncased",
-        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model"  
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model"
     },
     "inference_params": {
         "load_pretrained": true,
