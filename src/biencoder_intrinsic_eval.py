@@ -179,6 +179,8 @@ class BiEncoderConceptProperty(nn.Module):
             log.info(f"Freezing Concept Encoder of the Biencoder Model")
 
     def forward(self, ids_dict, pretrained_concept_embeddings=None):
+        label = ids_dict.pop("label")
+
         concept_embedding, property_embedding, _ = self.con_prop_bienc(**ids_dict)
 
         logits = (
@@ -187,7 +189,6 @@ class BiEncoderConceptProperty(nn.Module):
             .reshape(property_embedding.shape[0], 1)
         )
 
-        label = ids_dict.pop("label")
         loss = None
         if label is not None:
             loss = self.bce_loss_function(logits, label)
