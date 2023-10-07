@@ -146,6 +146,7 @@ class DatasetConceptProperty(Dataset):
 class BiEncoderConceptProperty(nn.Module):
     def __init__(self, config):
         super(BiEncoderConceptProperty, self).__init__()
+
         model_params = config["model_params"]
         training_params = config["training_params"]
 
@@ -253,7 +254,7 @@ def prepare_data_and_models(config):
         test_dataloader = None
 
     ########### Creating Model ###########
-    model = BiEncoderConceptProperty(model_params=model_params)
+    model = BiEncoderConceptProperty(config=config)
 
     if torch.cuda.is_available():
         n_gpu = torch.cuda.device_count()
