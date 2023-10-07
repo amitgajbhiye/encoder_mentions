@@ -30,7 +30,7 @@ from transformers import (
 )
 
 from early_stop import EarlyStopping
-from je_utils import compute_scores, read_config, set_seed
+from je_utils import compute_scores, read_config, set_seed, clean_text
 from multitask_con_prop_men_def import JointConceptPropDefMen
 
 warnings.filterwarnings("ignore")
@@ -464,6 +464,12 @@ def model_evaluation_property_cross_validation(config):
         with open(train_pkl, "rb") as train_file, open(test_pkl, "rb") as test_file:
             train_df = pickle.load(train_file)
             test_df = pickle.load(test_file)
+
+        train_df["concept"] = train_df["concept"].apply(clean_text)
+        train_df["property"] = train_df["property"].apply(clean_text)
+
+        test_df["concept"] = test_df["concept"].apply(clean_text)
+        test_df["property"] = test_df["property"].apply(clean_text)
 
         log.info(f"fold: {fold_num}")
         log.info(f"train_df: {train_df}")

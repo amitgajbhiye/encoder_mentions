@@ -218,3 +218,10 @@ def old_calculate_inbatch_cross_entropy_loss(
     ########################
 
     return total_loss, batch_logits, batch_labels
+
+
+def clean_text(text):
+    text = text.strip().split("_")
+    text = " ".join(text)
+
+    return text
