@@ -1,6 +1,6 @@
 #!/bin/bash --login
 
-#SBATCH --job-name=setup2_setup2_economy_mention_embeddings
+#SBATCH --job-name=s2economy_mention_embeddings
 
 #SBATCH --output=logs/get_mention_embeddings/out_setup2_economy_mention_embeddings.txt
 #SBATCH --error=logs/get_mention_embeddings/err_setup2_economy_mention_embeddings.txt

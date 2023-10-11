@@ -6,7 +6,7 @@
         "hf_tokenizer_name": "bert-large-uncased",
         "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
         "max_len": 120,
-        "word_sent_file": "data/mcrae/mcrae_concept_with_mention_sentences.tsv"
+        "word_sent_file": "data/small_onto_mention_sentences/economy_mention.tsv"
     },
     "model_params": {
         "hf_checkpoint_name": "bert-large-uncased",
