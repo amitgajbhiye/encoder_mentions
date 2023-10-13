@@ -186,6 +186,12 @@ class BiEncoderConceptProperty(nn.Module):
                     )
             log.info(f"Freezing Concept Encoder of the Biencoder Model")
 
+        log.info(f"averaging_strategy: {self.averaging_strategy}")
+        log.info(f"num_nearest_neighbours: {self.num_nearest_neighbours}")
+        log.info(
+            f"self.average_with_bienc_con_embed: {self.average_with_bienc_con_embed}"
+        )
+
     ####################################
 
     def get_concept_k_nearest_neighbor(
@@ -423,7 +429,7 @@ def train(config, param_dict):
     )
 
     for epoch in trange(max_epochs, desc="Epoch"):
-        log.info("Epoch {:} of {:}".format(epoch, max_epochs))
+        log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
         train_loss = 0.0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Train Iteration")):
@@ -462,7 +468,7 @@ def train(config, param_dict):
 
             if (step + 1) % 100 == 0:
                 log.info(
-                    f"Epoch [{epoch}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
                 )
 
             del batch
