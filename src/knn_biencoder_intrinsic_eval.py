@@ -213,11 +213,17 @@ class BiEncoderConceptProperty(nn.Module):
         for idx, (bienc_con_embed, concept_men_embeds) in enumerate(
             zip(bienc_concept_embeddings, concept_mention_embeddings)
         ):
+            print(f"concept_men_embeds: {concept_men_embeds}", flush=True)
             zero_bienc_con_embeds = np.expand_dims(
                 np.insert(bienc_con_embed, 0, float(0)), 0
             )
-            transformed_concept_mention_embeddings = np.array(
+            transformed_concept_mention_embeddings = np.asarray(
                 transform(concept_men_embeds)
+            )
+
+            print(
+                f"transformed_concept_mention_embeddings: {transformed_concept_mention_embeddings.shape}",
+                flush=True,
             )
 
             bienc_con_similar_mention_embeds = NearestNeighbors(
