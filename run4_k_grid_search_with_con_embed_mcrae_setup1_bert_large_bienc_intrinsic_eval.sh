@@ -13,7 +13,7 @@
 #SBATCH --gres=gpu:1
 
 #SBATCH --mem=20G
-#SBATCH -t 4-00:00:00
+#SBATCH -t 5-00:00:00
 #SBATCH --qos=gpu7d
 
 conda activate venv

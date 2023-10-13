@@ -682,7 +682,7 @@ if __name__ == "__main__":
         log.info(f'num_folds: {config["training_params"]["num_folds"]}')
 
         k_values = [1, 3, 5, 10, 20, 50]
-        max_epochs = [6, 2, 3, 4, 5]
+        max_epochs = [6, 1, 2, 3, 4, 5]
         for max_epoch in max_epochs:
             for k_value in k_values:
                 log.info(f"{'*' * 80}")
