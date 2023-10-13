@@ -441,7 +441,7 @@ def train(config, param_dict):
                 [con_all_mention_embeds_dict[con] for con in batch["concept"]]
             )  # shape(batch, num_mentions, mention_dim)
 
-            print(f"con_mention_embeds_list.shape: {pretrained_con_embeds.shape}")
+            print(f"batch_con_mention_embeds.shape: {batch_con_mention_embeds.shape}")
 
             ids_dict = train_dataset.get_sent_ids(batch)
             ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
