@@ -259,7 +259,7 @@ class BiEncoderConceptProperty(nn.Module):
 
         elif self.averaging_strategy == "knn":
             pretrained_concept_embeddings = self.get_concept_k_nearest_neighbor(
-                bienc_concept_embedding=bienc_concept_embedding,
+                bienc_concept_embeddings=bienc_concept_embedding,
                 concept_mention_embeddings=pretrained_concept_embeddings,
             )
 
