@@ -207,7 +207,7 @@ class BiEncoderConceptProperty(nn.Module):
             return new_vecs
 
         bienc_concept_embeddings = bienc_concept_embeddings.cpu().numpy()
-        concept_mention_embeddings = concept_mention_embeddings.cpu().numpy()
+
         pretrained_concept_embeddings = np.empty_like(bienc_concept_embeddings)
 
         for idx, (bienc_con_embed, concept_men_embeds) in enumerate(
