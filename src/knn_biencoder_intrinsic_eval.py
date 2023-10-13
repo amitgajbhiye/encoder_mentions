@@ -227,6 +227,8 @@ class BiEncoderConceptProperty(nn.Module):
             con_distances, con_indices = bienc_con_similar_mention_embeds.kneighbors(
                 np.array(zero_bienc_con_embeds)
             )
+
+            print(f"con_indices: {type(con_indices)}, {con_indices}", flush=True)
             k_nearest_mention_embeds = np.squeeze(concept_men_embeds[con_indices])
 
             if self.average_with_bienc_con_embed:
