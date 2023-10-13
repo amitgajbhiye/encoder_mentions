@@ -177,13 +177,13 @@ class BiEncoderConceptProperty(nn.Module):
             for name, parameter in self.con_prop_bienc.named_parameters():
                 print(f"layer_name: {name}", flush=True)
                 if "concept_encoder" in name:
-                    print(
-                        f"before_false_parameter.requires_grad: {parameter.requires_grad}"
-                    )
+                    # print(
+                    #     f"before_false_parameter.requires_grad: {parameter.requires_grad}"
+                    # )
                     parameter.requires_grad = False
-                    print(
-                        f"after_false_parameter.requires_grad: {parameter.requires_grad}"
-                    )
+                    # print(
+                    #     f"after_false_parameter.requires_grad: {parameter.requires_grad}"
+                    # )
             log.info(f"Freezing Concept Encoder of the Biencoder Model")
 
         log.info(f"averaging_strategy: {self.averaging_strategy}")
@@ -213,7 +213,7 @@ class BiEncoderConceptProperty(nn.Module):
         for idx, (bienc_con_embed, concept_men_embeds) in enumerate(
             zip(bienc_concept_embeddings, concept_mention_embeddings)
         ):
-            print(f"concept_men_embeds: {concept_men_embeds}", flush=True)
+            # print(f"concept_men_embeds: {concept_men_embeds}", flush=True)
             zero_bienc_con_embeds = np.expand_dims(
                 np.insert(bienc_con_embed, 0, float(0)), 0
             )
@@ -225,6 +225,14 @@ class BiEncoderConceptProperty(nn.Module):
                 f"transformed_concept_mention_embeddings: {transformed_concept_mention_embeddings.shape}",
                 flush=True,
             )
+
+            if (
+                transformed_concept_mention_embeddings.shape[0]
+                < self.num_nearest_neighbours
+            ):
+                self.num_nearest_neighbours = (
+                    transformed_concept_mention_embeddings.shape[0]
+                )
 
             bienc_con_similar_mention_embeds = NearestNeighbors(
                 n_neighbors=self.num_nearest_neighbours, algorithm="brute"
@@ -409,6 +417,10 @@ def read_concept_all_mention_embeds_pkl(file_path):
             con_all_mention_embeds_dict[con].append(emb)
 
     log.info(f"total_concepts_in_dict: {len(con_all_mention_embeds_dict)}")
+    print(f"total_concepts_in_dict: {len(con_all_mention_embeds_dict)}")
+
+    for key, value in con_all_mention_embeds_dict.items():
+        print(f"{key}: {len(value)}")
 
     return con_all_mention_embeds_dict
 
