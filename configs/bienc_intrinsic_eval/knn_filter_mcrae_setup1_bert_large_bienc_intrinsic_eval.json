@@ -21,7 +21,7 @@
         "pretrained_bienc_model_path": "/scratch/c.scmag3/property_augmentation/trained_models/cnetp_chatgpt_pretrain/bienc_bert_large_cnetp_chatgpt100k_pretrain_new_data.pt",
         "pretrained_con_all_mention_embeds_pkl": "data/mcrae/setup1_mcrae_concepts_all_mention_embeds.pkl",
         "mention_embeds_averaging_strategy": "all",
-        "nearest_neighbours": 5,
+        "num_nearest_neighbours": 5,
         "average_with_bienc_con_embed": false,
         "batch_size": 32,
         "lr_schedule":"linear",
