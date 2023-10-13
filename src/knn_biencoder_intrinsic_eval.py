@@ -188,9 +188,7 @@ class BiEncoderConceptProperty(nn.Module):
 
         log.info(f"averaging_strategy: {self.averaging_strategy}")
         log.info(f"num_nearest_neighbours: {self.num_nearest_neighbours}")
-        log.info(
-            f"self.average_with_bienc_con_embed: {self.average_with_bienc_con_embed}"
-        )
+        log.info(f"average_with_bienc_con_embed: {self.average_with_bienc_con_embed}")
 
     ####################################
 
@@ -208,9 +206,10 @@ class BiEncoderConceptProperty(nn.Module):
                 )
             return new_vecs
 
-        pretrained_concept_embeddings = np.empty_like(
-            bienc_concept_embeddings.cpu().numpy()
-        )
+        bienc_concept_embeddings = bienc_concept_embeddings.cpu().numpy()
+        concept_mention_embeddings = concept_mention_embeddings.cpu().numpy()
+        pretrained_concept_embeddings = np.empty_like(bienc_concept_embeddings)
+
         for idx, (bienc_con_embed, concept_men_embeds) in enumerate(
             zip(bienc_concept_embeddings, concept_mention_embeddings)
         ):
