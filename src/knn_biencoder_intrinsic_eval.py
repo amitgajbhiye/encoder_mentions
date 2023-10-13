@@ -175,7 +175,7 @@ class BiEncoderConceptProperty(nn.Module):
 
         if freeze_concept_encoder:
             for name, parameter in self.con_prop_bienc.named_parameters():
-                print(f"layer_name: {name}", flush=True)
+                # print(f"layer_name: {name}", flush=True)
                 if "concept_encoder" in name:
                     # print(
                     #     f"before_false_parameter.requires_grad: {parameter.requires_grad}"
@@ -234,6 +234,10 @@ class BiEncoderConceptProperty(nn.Module):
                     transformed_concept_mention_embeddings.shape[0]
                 )
 
+            print(
+                f"self.num_nearest_neighbours: {self.num_nearest_neighbours}",
+                flush=True,
+            )
             bienc_con_similar_mention_embeds = NearestNeighbors(
                 n_neighbors=self.num_nearest_neighbours, algorithm="brute"
             ).fit(np.array(transformed_concept_mention_embeddings))
@@ -677,7 +681,19 @@ if __name__ == "__main__":
         log.info(f"Parameter cv_type : {cv_type}")
         log.info(f'num_folds: {config["training_params"]["num_folds"]}')
 
-        model_evaluation_property_cross_validation(config)
+        k_values = [1, 3, 5, 10, 20, 50]
+        max_epochs = [6, 2, 3, 4, 5]
+        for max_epoch in max_epochs:
+            for k_value in k_values:
+                log.info(f"{'*' * 80}")
+                log.info(f"new_grid_search")
+                log.info(f"max_epoch_{max_epoch}_num_nearest_{k_value}")
+
+                config["training_params"]["max_epochs"] = max_epoch
+                config["training_params"]["num_nearest_neighbours"] = k_value
+                log.info(f"new_config: {config}")
+
+                model_evaluation_property_cross_validation(config)
 
     elif cv_type == "model_evaluation_concept_property_split":
         log.info(f'Parameter do_cv : {config["training_params"].get("do_cv")}')
