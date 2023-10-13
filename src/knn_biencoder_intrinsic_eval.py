@@ -229,7 +229,13 @@ class BiEncoderConceptProperty(nn.Module):
             )
 
             print(f"con_indices: {type(con_indices)}, {con_indices}", flush=True)
-            k_nearest_mention_embeds = np.squeeze(concept_men_embeds([con_indices]))
+            k_nearest_mention_embeds = np.squeeze(
+                np.asarray(concept_men_embeds)[con_indices]
+            )
+            print(
+                f"k_nearest_mention_embeds.shape: {k_nearest_mention_embeds.shape}",
+                flush=True,
+            )
 
             if self.average_with_bienc_con_embed:
                 k_nearest_mention_embeds = np.concatenate(
