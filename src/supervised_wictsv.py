@@ -4,7 +4,10 @@ import torch.nn as nn
 import csv
 import numpy as np
 import pandas as pd
+import logging
+import time
 from scipy.spatial import distance
+
 
 import pickle
 
@@ -22,9 +25,27 @@ from torch.nn import BCEWithLogitsLoss
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
-class UnsupervisedWicTsv(nn.Module):
+def set_logger(config):
+    log_file_name = os.path.join(
+        "logs",
+        config.get("log_dirctory"),
+        f"log_{config.get('experiment_name')}_{time.strftime('%d-%m-%Y_%H-%M-%S')}.txt",
+    )
+
+    print("config.get('experiment_name') :", config.get("experiment_name"), flush=True)
+    print("\nlog_file_name :", log_file_name, flush=True)
+
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename=log_file_name,
+        filemode="w",
+        format="%(asctime)s : %(name)s : %(levelname)s - %(message)s",
+    )
+
+
+class SupervisedWicTsv(nn.Module):
     def __init__(self, config):
-        super(UnsupervisedWicTsv, self).__init__()
+        super(SupervisedWicTsv, self).__init__()
 
         inference_params = config["inference_params"]
         dataset_params = config["dataset_params"]
@@ -76,7 +97,6 @@ class UnsupervisedWicTsv(nn.Module):
         )
 
         ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
-
         mention_vectors = self.men_model(pretrained_con_embeds=None, **ids_dict)
 
         return mention_vectors
@@ -93,7 +113,6 @@ class UnsupervisedWicTsv(nn.Module):
         )
 
         ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
-
         def_vectors = self.def_model(pretrained_con_embeds=None, **ids_dict)
 
         return def_vectors
@@ -126,9 +145,150 @@ class UnsupervisedWicTsv(nn.Module):
     ###################################################################
 
 
-class MultitaskUnsupervisedWicTsv(nn.Module):
+def prepare_data_and_models(config):
+    ############
+    training_params = config["training_params"]
+    dataset_params = config["dataset_params"]
+    model_params = config["model_params"]
+    ############
+
+    load_pretrained = training_params["load_pretrained"]
+    pretrained_model_path = training_params["pretrained_model_path"]
+    lr = training_params["lr"]
+    weight_decay = training_params["weight_decay"]
+    max_epochs = training_params["max_epochs"]
+    batch_size = training_params["batch_size"]
+
+    train_file = dataset_params["train_file_path"]
+    valid_file = dataset_params["val_file_path"]
+
+    num_workers = 4
+
+    if train_file is not None:
+        train_dataset = DatasetConceptSentence(train_file, dataset_params)
+        train_sampler = MPerClassSampler(
+            train_dataset.data_df["labels"],
+            m=1,
+            batch_size=batch_size,
+            length_before_new_iter=len(train_dataset.data_df["labels"]),
+        )
+
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            sampler=train_sampler,
+            collate_fn=None,
+            num_workers=num_workers,
+            pin_memory=True,
+        )
+
+        log.info(f"Train Data DF shape : {train_dataset.data_df.shape}")
+    else:
+        log.info(f"Train File is Empty.")
+        train_dataloader = None
+
+    if valid_file is not None:
+        val_dataset = DatasetConceptSentence(valid_file, dataset_params)
+        val_sampler = MPerClassSampler(
+            val_dataset.data_df["labels"],
+            m=1,
+            batch_size=batch_size,
+            length_before_new_iter=len(val_dataset.data_df["labels"]),
+        )
+        val_dataloader = DataLoader(
+            val_dataset,
+            batch_size=batch_size,
+            sampler=val_sampler,
+            collate_fn=None,
+            num_workers=num_workers,
+            pin_memory=True,
+            drop_last=False,
+        )
+        log.info(f"Valid Data DF shape : {val_dataset.data_df.shape}")
+    else:
+        log.info(f"Validation File is Empty.")
+        val_dataloader = None
+
+    ########### Creating Model ###########
+    model = ModelDefinitionEncoder(model_params=model_params)
+
+    log.info(f"Load Pretrained : {load_pretrained}")
+    log.info(f"Pretrained Model Path : {pretrained_model_path}")
+    if load_pretrained:
+        log.info(f"load_pretrained is : {load_pretrained}")
+        log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
+        model.load_state_dict(torch.load(pretrained_model_path))
+
+        log.info(f"Loaded Pretrained Model")
+
+    if torch.cuda.is_available():
+        n_gpu = torch.cuda.device_count()
+        if n_gpu > 1:
+            logging.info(f"using multiple GPUs: {n_gpu}")
+            model = nn.DataParallel(model)
+        model.to(device=device)
+
+    log.info(f"model_class : {model.__class__.__name__}")
+
+    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    if training_params["lr_schedule"] == "linear":
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            len(train_dataloader) * 2,
+            int(len(train_dataloader) * max_epochs),
+        )
+    else:
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer,
+            len(train_dataloader) * 2,
+            int(len(train_dataloader) * max_epochs),
+            num_cycles=1.5,
+        )
+    log.info(f"lr_scheduler: {scheduler}")
+
+    return {
+        "model": model,
+        "scheduler": scheduler,
+        "optimizer": optimizer,
+        "train_dataset": train_dataset,
+        "train_dataloader": train_dataloader,
+        "val_dataset": val_dataset,
+        "val_dataloader": val_dataloader,
+    }
+
+
+if __name__ == "__main__":
+    set_seed(1)
+
+    parser = ArgumentParser(description="Definition Encoder")
+
+    parser.add_argument(
+        "-c",
+        "--config_file",
+        required=True,
+        help="path to the configuration file",
+    )
+
+    args = parser.parse_args()
+    config = read_config(args.config_file)
+
+    set_logger(config=config)
+    log = logging.getLogger(__name__)
+
+    log.info("The model is run with the following configuration")
+    log.info(f"\n {config} \n")
+
+    param_dict = prepare_data_and_models(config=config)
+
+    train(config=config, param_dict=param_dict)
+else:
+    log = logging.getLogger(__name__)
+
+
+class MultitaskSupervisedWicTsv(nn.Module):
     def __init__(self, config):
-        super(MultitaskUnsupervisedWicTsv, self).__init__()
+        super(MultitaskSupervisedWicTsv, self).__init__()
 
         inference_params = config["inference_params"]
         dataset_params = config["dataset_params"]
@@ -202,8 +362,8 @@ class MultitaskUnsupervisedWicTsv(nn.Module):
         }
 
         ### Multitask Model
-        with torch.no_grad():
-            outputs = self.multitask_model(input_ids_and_labels)
+
+        outputs = self.multitask_model(input_ids_and_labels)
 
         mention_vectors = outputs["men_masks"]
         def_vectors = outputs["def_masks"]

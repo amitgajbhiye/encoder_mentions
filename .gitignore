@@ -160,3 +160,4 @@ logs/
 utils/__pycache__/functions.cpython-39.pyc
 .pickle
 .pkl
+data/mention
