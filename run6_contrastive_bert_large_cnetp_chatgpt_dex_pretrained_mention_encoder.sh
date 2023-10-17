@@ -14,6 +14,7 @@
 
 #SBATCH --mem=16G
 #SBATCH -t 2-00:00:00
+#SBATCH --exclusive
 
 conda activate venv
 
