@@ -1,6 +1,6 @@
 #!/bin/bash --login
 
-#SBATCH --job-name=MenDex
+#SBATCH --job-name=Men_CCDex
 
 #SBATCH --output=logs/mention_enc/out_contrastive_bert_large_cnetp_chatgpt_dex_pretrained_mention_encoder.txt
 #SBATCH --error=logs/mention_enc/err_contrastive_bert_large_cnetp_chatgpt_dex_pretrained_mention_encoder.txt
