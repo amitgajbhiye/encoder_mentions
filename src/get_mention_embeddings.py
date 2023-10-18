@@ -290,6 +290,9 @@ def prepare_data_and_models(config):
 
         log.info(f"Loaded Pretrained Model")
 
+        for name, parameter in model.named_parameters():
+            log.info(f"layer_name: {name}")
+
     log.info(f"model_class : {model.__class__.__name__}")
 
     return {

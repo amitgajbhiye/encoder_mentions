@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import logging
 import time
+import re
 from scipy.spatial import distance
 
 
@@ -13,14 +14,14 @@ import pickle
 
 from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
-
 from multitask_con_prop_men_def import JointConceptPropDefMen
 
-from transformers import BertTokenizer
+
 from je_utils import read_config, set_seed, compute_scores
 from argparse import ArgumentParser
+from torch.utils.data import DataLoader, Dataset
+from transformers import BertModel, BertForMaskedLM, BertTokenizer
 from torch.nn import BCEWithLogitsLoss
-
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -41,6 +42,128 @@ def set_logger(config):
         filemode="w",
         format="%(asctime)s : %(name)s : %(levelname)s - %(message)s",
     )
+
+CLASSES = {
+    "bert-base-uncased": (BertModel, BertForMaskedLM, BertTokenizer, 103),
+    "bert-large-uncased": (
+        BertModel,
+        BertForMaskedLM,
+        BertTokenizer,
+        103,
+    ),
+}
+
+class WiCTSVDataset(Dataset):
+    def __init__(self, datatype, dataset_params):
+        
+        if datatype == "train":
+            self.file_path = dataset_params["train_file_path"]
+        elif datatype == "dev":
+            self.file_path = dataset_params["val_file_path"]
+        elif datatype == "test":
+            self.file_path = dataset_params["test_file_path"]
+            
+        self.data_df = pd.read_csv(self.file_path,sep="\t")
+        
+        log.info(f"datatype: {datatype}")
+        log.info(f"file_path: {self.file_path}")
+        log.info(f"dataframe_columns: {self.data_df.columns}")
+        log.info(f"loaded_dataframe: {self.data_df}")
+        
+        if datatype == "test":
+            assert "domain" in self.data_df, "Test data do not have domain columns"
+
+
+        self.hf_tokenizer_name = dataset_params["hf_tokenizer_name"]
+        self.hf_tokenizer_path = dataset_params["hf_tokenizer_path"]
+
+        _, _, tokenizer_class, _ = CLASSES[self.hf_tokenizer_name]
+
+        log.info(f"tokenizer_class : {tokenizer_class}")
+
+        self.tokenizer = tokenizer_class.from_pretrained(self.hf_tokenizer_path)
+
+        self.max_len = dataset_params["max_len"]
+
+        self.mask_token = self.tokenizer.mask_token
+        self.mask_token_id = self.tokenizer.mask_token_id
+
+    def __len__(self):
+        return len(self.data_df)
+
+    def __getitem__(self, idx):
+        word = self.data_df["word"][idx]
+        contexts = self.data_df["contexts"][idx]
+        definitions = self.data_df["definitions"][idx]
+
+        labels = self.data_df["labels"][idx]
+
+        return {"word": word, "contexts": contexts, "definitions": definitions, "labels": labels}
+
+
+    def mask_word_in_context(self, search_string, input_string):
+        def has_metacharacters(word):
+            metacharacters = r"[]().*+?|{}^$\\"
+            return [char for char in word if char in metacharacters]
+
+        if has_metacharacters(word=search_string):
+            raw_search_string = re.escape(search_string)
+        else:
+            raw_search_string = r"\b" + search_string + r"\b"
+
+        srch_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
+
+        start_idx = srch_output.start()
+        end_idx = srch_output.end()
+        mask_sent = input_string[:start_idx] + self.mask_token + input_string[end_idx:]
+
+        return mask_sent
+
+    def get_context_ids(self, batch):
+        masked_contexts = [
+            self.mask_word_in_context(word, context)
+            for word, context in zip(batch["word"], batch["contexts"])
+        ]
+
+        print(f"masked_contexts", flush=True)
+        print(masked_contexts, flush=True)
+
+        encoded_dict = self.tokenizer.batch_encode_plus(
+            batch_text_or_text_pairs=masked_contexts,
+            max_length=self.max_len,
+            add_special_tokens=True,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+            return_token_type_ids=True,
+        )
+
+        encoded_dict["labels"] = batch["labels"]
+
+        return encoded_dict
+    
+    def get_definition_ids(self, batch):
+        masked_definitions = [f"{self.mask_token}: {definition}" for definition in batch["definitions"]]
+        ######################################################
+        
+
+        print(f"masked_contexts", flush=True)
+        print(masked_contexts, flush=True)
+
+        encoded_dict = self.tokenizer.batch_encode_plus(
+            batch_text_or_text_pairs=masked_contexts,
+            max_length=self.max_len,
+            add_special_tokens=True,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+            return_token_type_ids=True,
+        )
+
+        encoded_dict["labels"] = batch["labels"]
+
+        return encoded_dict
+    +++++++++++++++++++++++++++++++        
 
 
 class SupervisedWicTsv(nn.Module):
@@ -117,7 +240,7 @@ class SupervisedWicTsv(nn.Module):
 
         return def_vectors
 
-    def forward(self, context_sents, definition_sents):
+    def forward(self, context_sents, definition_sents, hypernyms=None, labels=None):
         mention_embeds = self.get_mention_embeds(context_sents=context_sents)
         definition_embeds = self.get_definition_embeds(
             definition_sents=definition_sents
@@ -127,7 +250,7 @@ class SupervisedWicTsv(nn.Module):
 
         print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
         print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
-        print(f"pooled_embeds.shape : {concatenated_embeds.shape}", flush=True)
+        print(f"concatenated_embeds.shape : {concatenated_embeds.shape}", flush=True)
 
         concatenated_embeds = nn.ReLU()(concatenated_embeds)
         concatenated_embeds = self.dropout(concatenated_embeds)
