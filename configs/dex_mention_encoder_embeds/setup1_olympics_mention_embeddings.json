@@ -16,6 +16,6 @@
         "load_pretrained": true,
         "pretrained_model_path": "trained_models/mention_enc/contrastive_bert_large_dex_mentions_pretrained_mention_encoder.pt",
         "batch_size": 128,
-        "save_dir": "trained_models/dex_mention_encoder_embeds"
+        "save_dir": "trained_models/mention_embeddings/dex_mention_encoder_embeds"
     }
 }

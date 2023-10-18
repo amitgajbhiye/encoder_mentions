@@ -43,6 +43,7 @@ def set_logger(config):
         format="%(asctime)s : %(name)s : %(levelname)s - %(message)s",
     )
 
+
 CLASSES = {
     "bert-base-uncased": (BertModel, BertForMaskedLM, BertTokenizer, 103),
     "bert-large-uncased": (
@@ -53,26 +54,25 @@ CLASSES = {
     ),
 }
 
+
 class WiCTSVDataset(Dataset):
     def __init__(self, datatype, dataset_params):
-        
         if datatype == "train":
             self.file_path = dataset_params["train_file_path"]
         elif datatype == "dev":
             self.file_path = dataset_params["val_file_path"]
         elif datatype == "test":
             self.file_path = dataset_params["test_file_path"]
-            
-        self.data_df = pd.read_csv(self.file_path,sep="\t")
-        
+
+        self.data_df = pd.read_csv(self.file_path, sep="\t")
+
         log.info(f"datatype: {datatype}")
         log.info(f"file_path: {self.file_path}")
         log.info(f"dataframe_columns: {self.data_df.columns}")
         log.info(f"loaded_dataframe: {self.data_df}")
-        
+
         if datatype == "test":
             assert "domain" in self.data_df, "Test data do not have domain columns"
-
 
         self.hf_tokenizer_name = dataset_params["hf_tokenizer_name"]
         self.hf_tokenizer_path = dataset_params["hf_tokenizer_path"]
@@ -98,8 +98,12 @@ class WiCTSVDataset(Dataset):
 
         labels = self.data_df["labels"][idx]
 
-        return {"word": word, "contexts": contexts, "definitions": definitions, "labels": labels}
-
+        return {
+            "word": word,
+            "contexts": contexts,
+            "definitions": definitions,
+            "labels": labels,
+        }
 
     def mask_word_in_context(self, search_string, input_string):
         def has_metacharacters(word):
@@ -138,20 +142,20 @@ class WiCTSVDataset(Dataset):
             return_token_type_ids=True,
         )
 
-        encoded_dict["labels"] = batch["labels"]
+        # encoded_dict["labels"] = batch["labels"]
 
         return encoded_dict
-    
-    def get_definition_ids(self, batch):
-        masked_definitions = [f"{self.mask_token}: {definition}" for definition in batch["definitions"]]
-        ######################################################
-        
 
-        print(f"masked_contexts", flush=True)
-        print(masked_contexts, flush=True)
+    def get_definition_ids(self, batch):
+        masked_definitions = [
+            f"{self.mask_token}: {definition}" for definition in batch["definitions"]
+        ]
+
+        print(f"masked_definitions", flush=True)
+        print(masked_definitions, flush=True)
 
         encoded_dict = self.tokenizer.batch_encode_plus(
-            batch_text_or_text_pairs=masked_contexts,
+            batch_text_or_text_pairs=masked_definitions,
             max_length=self.max_len,
             add_special_tokens=True,
             padding="max_length",
@@ -160,10 +164,9 @@ class WiCTSVDataset(Dataset):
             return_token_type_ids=True,
         )
 
-        encoded_dict["labels"] = batch["labels"]
+        # encoded_dict["labels"] = batch["labels"]
 
         return encoded_dict
-    +++++++++++++++++++++++++++++++        
 
 
 class SupervisedWicTsv(nn.Module):

@@ -16,6 +16,6 @@
         "load_pretrained": true,
         "pretrained_model_path": "trained_models/mention_enc/epoch2/contrastive_bert_large_cnetp_chatgpt_dex_pretrained_mention_encoder.pt",
         "batch_size": 128,
-        "save_dir": "trained_models/epoch2_cnetpchatgpt_dex_mention_encoder_embeds"
+        "save_dir": "trained_models/mention_embeddings/epoch2_cnetpchatgpt_dex_mention_encoder_embeds"
     }
 }
