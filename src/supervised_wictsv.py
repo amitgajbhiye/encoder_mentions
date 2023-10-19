@@ -73,7 +73,7 @@ class WiCTSVDataset(Dataset):
         elif datatype == "test":
             self.test_df = test_df
 
-        self.data_df = pd.read_csv(self.file_path, sep="\t")[0:402]
+        self.data_df = pd.read_csv(self.file_path, sep="\t")
 
         log.info(f"datatype: {datatype}")
         log.info(f"file_path: {self.file_path}")
@@ -582,7 +582,7 @@ def test_best_model(config):
             log.info(f"*** Testing on All Domains ***")
             domain_data_df = test_df
 
-        log.info(f"num_test_instance : {len(domain_data_df)}", flush=True)
+        log.info(f"num_test_instance : {len(domain_data_df)}")
 
         test_dataset = WiCTSVDataset(
             datatype="test", test_df=domain_data_df, dataset_params=dataset_params
@@ -686,5 +686,5 @@ if __name__ == "__main__":
     param_dict = prepare_data_and_models(config=config)
     best_model_path = train(config=config, param_dict=param_dict)
 
-    config["training_params"]["best_model_path"] = best_model_path
-    test_best_model(config)
+    # config["training_params"]["best_model_path"] = best_model_path
+    # test_best_model(config)

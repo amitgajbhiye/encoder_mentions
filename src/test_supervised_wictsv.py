@@ -582,7 +582,7 @@ def test_best_model(config):
             log.info(f"*** Testing on All Domains ***")
             domain_data_df = test_df
 
-        log.info(f"num_test_instance : {len(domain_data_df)}", flush=True)
+        log.info(f"num_test_instance : {len(domain_data_df)}")
 
         test_dataset = WiCTSVDataset(
             datatype="test", test_df=domain_data_df, dataset_params=dataset_params
