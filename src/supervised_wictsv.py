@@ -537,6 +537,9 @@ def train(config, param_dict):
             )
             break
 
+    del model
+    gc.collect()
+
     return model_save_file
 
 
