@@ -73,7 +73,7 @@ class WiCTSVDataset(Dataset):
         elif datatype == "test":
             self.test_df = test_df
 
-        self.data_df = pd.read_csv(self.file_path, sep="\t")
+        self.data_df = pd.read_csv(self.file_path, sep="\t")[0:402]
 
         log.info(f"datatype: {datatype}")
         log.info(f"file_path: {self.file_path}")
@@ -307,15 +307,6 @@ def prepare_data_and_models(config):
     log.info(f"total_model_params: {total_model_params}")
     log.info(f"total_trainable_params: {total_trainable_params}")
 
-    # log.info(f"Load Pretrained : {load_pretrained}")
-    # log.info(f"Pretrained Model Path : {pretrained_model_path}")
-    # if load_pretrained:
-    #     log.info(f"load_pretrained is : {load_pretrained}")
-    #     log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
-    #     model.load_state_dict(torch.load(pretrained_model_path))
-
-    #     log.info(f"Loaded Pretrained Model")
-
     if torch.cuda.is_available():
         n_gpu = torch.cuda.device_count()
         if n_gpu > 1:
@@ -440,9 +431,6 @@ def train(config, param_dict):
         log.info(f"train_step: {step}")
         train_loss /= step + 1
 
-        del step
-        torch.cuda.empty_cache()
-
         # Validation
 
         log.info(f"Running Validation ...")
@@ -538,6 +526,8 @@ def train(config, param_dict):
             break
 
     del model
+    del step
+    torch.cuda.empty_cache()
     gc.collect()
 
     return model_save_file
@@ -686,5 +676,5 @@ if __name__ == "__main__":
     param_dict = prepare_data_and_models(config=config)
     best_model_path = train(config=config, param_dict=param_dict)
 
-    # config["training_params"]["best_model_path"] = best_model_path
-    # test_best_model(config)
+    config["training_params"]["best_model_path"] = best_model_path
+    test_best_model(config)

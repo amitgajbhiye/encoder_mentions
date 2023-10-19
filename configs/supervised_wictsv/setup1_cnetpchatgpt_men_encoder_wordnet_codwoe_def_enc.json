@@ -1,5 +1,5 @@
 {
-    "experiment_name": "setup1_bert_large",
+    "experiment_name": "setup1_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc",
     "log_dirctory": "supervised_wictsv",
     "dataset_params": {
         "dataset_name": "supervised_wictsv",
@@ -25,8 +25,8 @@
         "max_epochs": 100,
         "warmup_ratio": 0,
         "patience_early_stopping": 2,
-        "save_dir": "trained_models/mention_enc",
-        "model_name": "setup1_bert_large",
+        "save_dir": "trained_models/supervised_wictsv",
+        "model_name": "setup1_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc",
         "weight_decay": 0.01
     }
 

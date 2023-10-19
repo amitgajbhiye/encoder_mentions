@@ -19,7 +19,7 @@
 
 conda activate venv
 
-# python3 src/supervised_wictsv.py --config configs/supervised_wictsv/bert_large_cnetp_chatgpt.json
-python3 src/test_supervised_wictsv.py --config configs/supervised_wictsv/bert_large_cnetp_chatgpt.json
+python3 src/supervised_wictsv.py --config configs/supervised_wictsv/setup1_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.json
+# python3 src/test_supervised_wictsv.py --config configs/supervised_wictsv/bert_large_cnetp_chatgpt.json
 
 echo 'Job Finished !!!'
