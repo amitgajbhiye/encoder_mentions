@@ -441,6 +441,8 @@ def train(config, param_dict):
         torch.cuda.empty_cache()
 
         # Validation
+
+        log.info(f"Running Validation ...")
         val_loss = 0.0
         all_labels, all_logits = [], []
         model.eval()
@@ -462,6 +464,7 @@ def train(config, param_dict):
                 outputs = model(
                     context_ids_dict=context_ids_dict,
                     definition_ids_dict=definition_ids_dict,
+                    labels=labels,
                 )
 
             loss, logits = outputs
@@ -491,6 +494,7 @@ def train(config, param_dict):
 
         scores = compute_scores(labels, preds)
 
+        log.info(f"validation_scores")
         for key, value in scores.items():
             log.info(f"{key}: {value}")
 
