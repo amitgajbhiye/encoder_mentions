@@ -19,7 +19,7 @@
     },
     "training_params": {
         "load_pretrained": false,
-        "batch_size": 32,
+        "batch_size": 4,
         "lr_schedule":"cosine",
         "lr": 2e-6,
         "max_epochs": 100,

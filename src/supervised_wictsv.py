@@ -232,7 +232,7 @@ class SupervisedWicTsv(nn.Module):
 
         if labels is not None:
             loss_fct = BCEWithLogitsLoss()
-            loss = loss_fct(logits.squeeze(1), labels)
+            loss = loss_fct(logits, labels.reshape_as(logits).float().to(device))
             outputs = (loss,) + outputs
 
         return outputs
