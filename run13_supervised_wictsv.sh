@@ -14,9 +14,11 @@
 
 #SBATCH --mem=20G
 #SBATCH -t 0-01:00:00
+#SBATCH --exclusive
 
 conda activate venv
 
-python3 src/supervised_wictsv.py --config configs/supervised_wictsv/bert_large_cnetp_chatgpt.json
+# python3 src/supervised_wictsv.py --config configs/supervised_wictsv/bert_large_cnetp_chatgpt.json
+python3 src/test_supervised_wictsv.py --config configs/supervised_wictsv/bert_large_cnetp_chatgpt.json
 
 echo 'Job Finished !!!'

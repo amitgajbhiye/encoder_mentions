@@ -683,8 +683,9 @@ if __name__ == "__main__":
     log.info("The model is run with the following configuration")
     log.info(f"\n {config} \n")
 
-    param_dict = prepare_data_and_models(config=config)
-    best_model_path = train(config=config, param_dict=param_dict)
+    # param_dict = prepare_data_and_models(config=config)
+    # best_model_path = train(config=config, param_dict=param_dict)
 
+    best_model_path = "trained_models/mention_enc/setup1_bert_large.pt"
     config["training_params"]["best_model_path"] = best_model_path
     test_best_model(config)
