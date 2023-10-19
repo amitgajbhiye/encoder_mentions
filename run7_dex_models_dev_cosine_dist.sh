@@ -2,8 +2,8 @@
 
 #SBATCH --job-name=wicTSVDevCosine
 
-#SBATCH --output=logs/wictsv_evaluation/out_run7_dex_models_dev_cosine_dist_cross.txt
-#SBATCH --error=logs/wictsv_evaluation/err_run7_dex_models_dev_cosine_dist_cross.txt
+#SBATCH --output=logs/wictsv_evaluation/out_run7_dex_models_dev_cosine_dist.txt
+#SBATCH --error=logs/wictsv_evaluation/err_run7_dex_models_dev_cosine_dist.txt
 
 #SBATCH --tasks-per-node=5
 #SBATCH --ntasks=5
