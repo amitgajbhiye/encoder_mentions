@@ -371,6 +371,7 @@ def train(config, param_dict):
 
     patience_early_stopping = training_params["patience_early_stopping"]
 
+    best_val_accuracy = 0.0
     patience_counter = 0
     for epoch in trange(max_epochs, desc="Epoch"):
         log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
@@ -444,7 +445,6 @@ def train(config, param_dict):
         log.info(f"Running Validation ...")
         val_loss = 0.0
         all_labels, all_logits = [], []
-        best_val_accuracy = 0.0
 
         model.eval()
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
