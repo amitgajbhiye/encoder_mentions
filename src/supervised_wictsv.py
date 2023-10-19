@@ -73,7 +73,7 @@ class WiCTSVDataset(Dataset):
         elif datatype == "test":
             self.file_path = dataset_params["test_file_path"]
 
-        self.data_df = pd.read_csv(self.file_path, sep="\t")[0:500]
+        self.data_df = pd.read_csv(self.file_path, sep="\t")[0:800]
 
         log.info(f"datatype: {datatype}")
         log.info(f"file_path: {self.file_path}")
@@ -447,7 +447,7 @@ def train(config, param_dict):
         val_loss = 0.0
         all_labels, all_logits = [], []
 
-        best_val_accuracy = 0.0
+        best_val_accuracy = None
 
         model.eval()
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
@@ -508,22 +508,31 @@ def train(config, param_dict):
             log.info(f"{key}: {value}")
 
         running_val_accuracy = scores["accuracy"]
-        if running_val_accuracy <= best_val_accuracy:
+
+        if best_val_accuracy is None:
+            model_save_file = os.path.join(save_dir, f"{model_name}.pt")
+            log.info(f"Epoch: {epoch + 1}, Saving Model to: {model_save_file}")
+            torch.save(
+                model.state_dict(),
+                model_save_file,
+            )
+
+        elif running_val_accuracy <= best_val_accuracy:
             patience_counter += 1
 
-            log.info(f"Incrementing Patience Counter to: {patience_early_stopping}")
+            log.info(f"Incrementing Patience Counter to: {patience_counter}")
             log.info(f"Previous Best Accuracy: {best_val_accuracy}")
             log.info(f"Current Accuracy: {running_val_accuracy}")
 
-        else:
+        elif running_val_accuracy > best_val_accuracy:
             model_save_file = os.path.join(save_dir, f"{model_name}.pt")
             log.info(f"Saving Model to: {model_save_file}")
 
-            best_val_accuracy = running_val_accuracy
-            patience_counter = 0
-
             log.info(f"Previous Best Accuracy: {best_val_accuracy}")
             log.info(f"Current Accuracy: {running_val_accuracy}")
+
+            best_val_accuracy = running_val_accuracy
+            patience_counter = 0
 
             torch.save(
                 model.state_dict(),
