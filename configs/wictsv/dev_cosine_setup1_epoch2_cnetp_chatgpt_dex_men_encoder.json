@@ -4,12 +4,12 @@
     "dataset_params": {
         "dataset_name": "wictsv_devset",
         "hf_tokenizer_name": "bert-large-uncased",
-        "hf_tokenizer_path": "/home/amit/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
         "max_len": 120
     },
     "model_params": {
         "hf_checkpoint_name": "bert-large-uncased",
-        "hf_model_path": "/home/amit/hf_pretrained_models/bert_large_mlm/model",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
         "run_mode": "inference",
         "loss_type": "contrastive"
     },
