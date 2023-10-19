@@ -65,13 +65,13 @@ CLASSES = {
 
 
 class WiCTSVDataset(Dataset):
-    def __init__(self, datatype, dataset_params):
+    def __init__(self, datatype, dataset_params, test_df=None):
         if datatype == "train":
             self.file_path = dataset_params["train_file_path"]
         elif datatype == "valid":
             self.file_path = dataset_params["val_file_path"]
         elif datatype == "test":
-            self.file_path = dataset_params["test_file_path"]
+            self.test_df = test_df
 
         self.data_df = pd.read_csv(self.file_path, sep="\t")[0:402]
 
@@ -196,6 +196,7 @@ class SupervisedWicTsv(nn.Module):
         self.def_model.to(device=device)
 
         # Loading pretrained models
+
         self.men_model.load_state_dict(torch.load(pretrained_mention_model_path))
         self.def_model.load_state_dict(torch.load(pretrained_definition_model_path))
 
@@ -374,6 +375,7 @@ def train(config, param_dict):
     best_val_accuracy = 0.0
     patience_counter = 0
     for epoch in trange(max_epochs, desc="Epoch"):
+        log.info(f"{'*'} * 80")
         log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
         train_loss = 0.0
         model.train()
@@ -534,6 +536,127 @@ def train(config, param_dict):
             )
             break
 
+        return model_save_file
+
+
+def test_best_model(config):
+    log.info(f"{'*' * 30} Testing the Model {'*' * 30}")
+
+    best_model_path = config["training_params"]["best_model_path"]
+
+    log.info(f"best_model_path: {best_model_path}")
+
+    dataset_params = config["dataset_params"]
+    test_file = dataset_params["test_file_path"]
+    test_df = pd.read_csv(test_file, sep="\t")
+
+    training_params = config["training_params"]
+    batch_size = training_params["batch_size"]
+
+    log.info(f"test_file: {test_file}")
+    log.info(f"test_df.columns: {test_df.columns}")
+    log.info(f"test_df: {test_df}")
+
+    model_params = config["model_params"]
+    model = SupervisedWicTsv(model_params=model_params)
+    model.load_state_dict(torch.load(best_model_path))
+
+    test_domains = [
+        ("0", "WNT_WKT"),
+        ("1", "MSH"),
+        ("2", "CTL"),
+        ("3", "CPS"),
+        ("4", "all"),
+    ]
+
+    for domain_id, domain in test_domains:
+        log.info(f"******* Testing on domain_id: {domain_id}, domain: {domain} *******")
+
+        if domain_id in ("0", "1", "2", "3"):
+            domain_data_df = test_df[test_df["domain"] == domain_id]
+        else:
+            log.info(f"*** Testing on All Domains ***")
+            domain_data_df = test_df
+
+        log.info(f"num_test_instance : {len(domain_data_df)}", flush=True)
+
+        test_dataset = WiCTSVDataset(
+            datatype="test", test_df=domain_data_df, dataset_params=dataset_params
+        )
+        test_sampler = SequentialSampler(test_dataset)
+        test_dataloader = DataLoader(
+            test_dataset,
+            batch_size=batch_size,
+            sampler=test_sampler,
+            collate_fn=None,
+            num_workers=1,
+            pin_memory=True,
+            drop_last=False,
+        )
+
+        log.info(f"test_dataset.test_df: {len(test_dataset.test_df)}")
+        log.info(f"test_dataset.test_df: {test_dataset.test_df.shape}")
+
+        all_logits, all_labels = [], []
+
+        model.eval()
+        for step, batch in enumerate(tqdm(test_dataloader, desc="Testing")):
+            labels = batch["labels"]
+
+            # print(f"test_batch_labels: {type(labels), labels}", flush=True)
+            # log.info(f"test_batch_labels: {type(labels), labels}")
+
+            context_ids_dict = test_dataset.get_context_ids(batch)
+            context_ids_dict = {
+                key: value.to(device) for key, value in context_ids_dict.items()
+            }
+
+            definition_ids_dict = test_dataset.get_definition_ids(batch)
+            definition_ids_dict = {
+                key: value.to(device) for key, value in definition_ids_dict.items()
+            }
+
+            with torch.no_grad():
+                outputs = model(
+                    context_ids_dict=context_ids_dict,
+                    definition_ids_dict=definition_ids_dict,
+                    labels=labels,
+                )
+
+            loss, logits = outputs
+
+            print("test_batch_logits: {logits}", flush=True)
+            print("test_batch_lables: {labels}", flush=True)
+
+            all_logits.extend(logits)
+            all_labels.extend(labels)
+
+            del context_ids_dict
+            del definition_ids_dict
+            del loss
+            gc.collect()
+
+        all_preds = (
+            torch.round(torch.sigmoid(torch.vstack(all_logits)))
+            .reshape(-1, 1)
+            .detach()
+            .cpu()
+            .numpy()
+        )
+        all_labels = torch.vstack(all_labels).reshape(-1, 1).detach().cpu().numpy()
+        print(flush=True)
+        print(f"test_all_logits: {len(all_logits)}, {all_logits}", flush=True)
+        print(f"test_all_preds: {all_preds.shape}, {all_preds}", flush=True)
+        print(f"test_all_lables: {all_labels.shape}, {all_labels}", flush=True)
+
+        scores = compute_scores(all_labels, all_preds)
+
+        log.info(f"{'#' * 80}")
+
+        log.info(f"test_scores on domain {domain_id}")
+        for key, value in scores.items():
+            log.info(f"{key}: {value}")
+
 
 if __name__ == "__main__":
     set_seed(1)
@@ -557,7 +680,11 @@ if __name__ == "__main__":
     log.info(f"\n {config} \n")
 
     param_dict = prepare_data_and_models(config=config)
-    train(config=config, param_dict=param_dict)
+    best_model_path = train(config=config, param_dict=param_dict)
+
+    config["training_params"]["best_model_path"] = best_model_path
+
+    test_best_model(config)
 
 
 # if __name__ == "__main__":
