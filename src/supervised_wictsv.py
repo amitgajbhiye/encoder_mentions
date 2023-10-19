@@ -68,7 +68,7 @@ class WiCTSVDataset(Dataset):
     def __init__(self, datatype, dataset_params):
         if datatype == "train":
             self.file_path = dataset_params["train_file_path"]
-        elif datatype == "dev":
+        elif datatype == "valid":
             self.file_path = dataset_params["val_file_path"]
         elif datatype == "test":
             self.file_path = dataset_params["test_file_path"]
