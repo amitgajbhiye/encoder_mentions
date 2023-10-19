@@ -516,14 +516,14 @@ def train(config, param_dict):
             log.info(f"Current Accuracy: {running_val_accuracy}")
 
         else:
+            model_save_file = os.path.join(save_dir, f"{model_name}.pt")
+            log.info(f"Saving Model to: {model_save_file}")
+
             log.info(f"Previous Best Accuracy: {best_val_accuracy}")
             log.info(f"Current Accuracy: {running_val_accuracy}")
 
             best_val_accuracy = running_val_accuracy
             patience_counter = 0
-
-            model_save_file = os.path.join(save_dir, f"{model_name}.pt")
-            log.info(f"Saving Model to: {model_save_file}")
 
             torch.save(
                 model.state_dict(),
