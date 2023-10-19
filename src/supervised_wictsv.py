@@ -138,8 +138,8 @@ class WiCTSVDataset(Dataset):
             for word, context in zip(batch["word"], batch["contexts"])
         ]
 
-        print(f"masked_contexts", flush=True)
-        print(masked_contexts, flush=True)
+        # print(f"masked_contexts", flush=True)
+        # print(masked_contexts, flush=True)
 
         encoded_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=masked_contexts,
@@ -160,8 +160,8 @@ class WiCTSVDataset(Dataset):
             f"{self.mask_token}: {definition}" for definition in batch["definitions"]
         ]
 
-        print(f"masked_definitions", flush=True)
-        print(masked_definitions, flush=True)
+        # print(f"masked_definitions", flush=True)
+        # print(masked_definitions, flush=True)
 
         encoded_dict = self.tokenizer.batch_encode_plus(
             batch_text_or_text_pairs=masked_definitions,
@@ -400,7 +400,8 @@ def train(config, param_dict):
             )
             loss, logits = outputs
 
-            print(f"batch_logits: {type(logits), logits}", flush=True)
+            print(f"train_batch_logits: {type(logits), logits}", flush=True)
+            print(f"train_batch_label: {type(labels), labels}", flush=True)
 
             if isinstance(model, nn.DataParallel):
                 loss = loss.mean()
@@ -469,8 +470,8 @@ def train(config, param_dict):
 
             loss, logits = outputs
 
-            print("val_batch_lables: {labels}", flush=True)
             print("val_batch_logits: {logits}", flush=True)
+            print("val_batch_lables: {labels}", flush=True)
 
             if isinstance(model, nn.DataParallel):
                 loss = loss.mean()
