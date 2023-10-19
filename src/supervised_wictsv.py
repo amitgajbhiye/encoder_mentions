@@ -17,7 +17,7 @@ from get_definition_embeddings import ModelDefinitionEncoder as definition_encod
 
 
 from je_utils import read_config, set_seed, compute_scores
-from early_stop import EarlyStopping
+
 from tqdm import tqdm, trange
 from argparse import ArgumentParser
 from torch.utils.data import DataLoader, Dataset
@@ -182,8 +182,6 @@ class SupervisedWicTsv(nn.Module):
     def __init__(self, model_params):
         super(SupervisedWicTsv, self).__init__()
 
-        # model_params = config["model_params"]
-
         pretrained_mention_model_path = model_params["pretrained_mention_model_path"]
         pretrained_definition_model_path = model_params[
             "pretrained_definition_model_path"
@@ -210,8 +208,8 @@ class SupervisedWicTsv(nn.Module):
             flush=True,
         )
 
-        self.dropout = nn.Dropout(2 * self.men_model.hidden_dropout_prob)
-        self.classifier = nn.Linear(2 * self.men_model.hidden_size, 1)
+        self.dropout = nn.Dropout(2 * self.men_model.module.hidden_dropout_prob)
+        self.classifier = nn.Linear(2 * self.men_model.module.hidden_size, 1)
 
     def forward(self, context_ids_dict, definition_ids_dict, labels=None):
         mention_embeds = self.men_model(pretrained_con_embeds=None, **context_ids_dict)
@@ -295,6 +293,17 @@ def prepare_data_and_models(config):
 
     ########### Creating Model ###########
     model = SupervisedWicTsv(model_params=model_params)
+
+    total_model_params = sum(p.numel() for p in model.parameters())
+    total_trainable_params = sum(
+        p.numel() for p in model.parameters() if p.requires_grad
+    )
+
+    print(f"total_model_params: {total_model_params}", flush=True)
+    print(f"total_trainable_params: {total_trainable_params}", flush=True)
+
+    log.info(f"total_model_params: {total_model_params}")
+    log.info(f"total_trainable_params: {total_trainable_params}")
 
     # log.info(f"Load Pretrained : {load_pretrained}")
     # log.info(f"Pretrained Model Path : {pretrained_model_path}")
