@@ -367,11 +367,11 @@ def train(config, param_dict):
 
     training_params = config["training_params"]
     max_epochs = training_params["max_epochs"]
+
     model_name = training_params["model_name"]
     save_dir = training_params["save_dir"]
 
     patience_early_stopping = training_params["patience_early_stopping"]
-    model_save_file = os.path.join(save_dir, model_name)
 
     patience_counter = 0
     for epoch in trange(max_epochs, desc="Epoch"):
@@ -511,15 +511,20 @@ def train(config, param_dict):
         if running_val_accuracy <= best_val_accuracy:
             patience_counter += 1
 
+            log.info(f"Incrementing Patience Counter to: {patience_early_stopping}")
             log.info(f"Previous Best Accuracy: {best_val_accuracy}")
             log.info(f"Current Accuracy: {running_val_accuracy}")
-            log.info(f"Incrementing Patience Counter to: {patience_early_stopping}")
 
         else:
-            patience_counter = 0
             log.info(f"Previous Best Accuracy: {best_val_accuracy}")
             log.info(f"Current Accuracy: {running_val_accuracy}")
+
+            best_val_accuracy = running_val_accuracy
+            patience_counter = 0
+
+            model_save_file = os.path.join(save_dir, f"{model_name}.pt")
             log.info(f"Saving Model to: {model_save_file}")
+
             torch.save(
                 model.state_dict(),
                 model_save_file,
