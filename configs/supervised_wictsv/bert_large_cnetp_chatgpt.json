@@ -14,7 +14,8 @@
         "hf_checkpoint_name": "bert-large-uncased",
         "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
         "pretrained_mention_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
-        "pretrained_definition_model_path": "trained_models/definition_encoder/bert_large_wordnet_codwoe.pt"
+        "pretrained_definition_model_path": "trained_models/definition_encoder/bert_large_wordnet_codwoe.pt",
+        "dropout_prob": 0.2
     },
     "training_params": {
         "load_pretrained": false,

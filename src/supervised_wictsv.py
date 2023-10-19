@@ -207,9 +207,10 @@ class SupervisedWicTsv(nn.Module):
             f"Definition Model is loaded from : {pretrained_definition_model_path}",
             flush=True,
         )
+        dropout_prop = model_params["dropout_prob"]
 
-        self.dropout = nn.Dropout(2 * self.men_model.module.hidden_dropout_prob)
-        self.classifier = nn.Linear(2 * self.men_model.module.hidden_size, 1)
+        self.dropout = nn.Dropout(dropout_prop)
+        self.classifier = nn.Linear(2 * self.men_model.module.encoder.hidden_size, 1)
 
     def forward(self, context_ids_dict, definition_ids_dict, labels=None):
         mention_embeds = self.men_model(pretrained_con_embeds=None, **context_ids_dict)
