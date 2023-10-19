@@ -73,7 +73,7 @@ class WiCTSVDataset(Dataset):
         elif datatype == "test":
             self.test_df = test_df
 
-        self.data_df = pd.read_csv(self.file_path, sep="\t")[0:402]
+        self.data_df = pd.read_csv(self.file_path, sep="\t")
 
         log.info(f"datatype: {datatype}")
         log.info(f"file_path: {self.file_path}")
@@ -505,7 +505,9 @@ def train(config, param_dict):
             log.info(f"Current Accuracy: {running_val_accuracy}")
 
         else:
-            model_save_file = os.path.join(save_dir, f"{model_name}.pt")
+            model_save_file = os.path.join(
+                save_dir, f"val_acc_{running_val_accuracy}_{model_name}.pt"
+            )
             log.info(f"Saving Model to: {model_save_file}")
 
             log.info(f"Previous Best Accuracy: {best_val_accuracy}")
@@ -676,5 +678,9 @@ if __name__ == "__main__":
     param_dict = prepare_data_and_models(config=config)
     best_model_path = train(config=config, param_dict=param_dict)
 
-    config["training_params"]["best_model_path"] = best_model_path
-    test_best_model(config)
+    log.info(f"{'*' * 80}")
+    log.info(f"Training Finished")
+    log.info(f"Best Model is Saved to {best_model_path}")
+
+    # config["training_params"]["best_model_path"] = best_model_path
+    # test_best_model(config)
