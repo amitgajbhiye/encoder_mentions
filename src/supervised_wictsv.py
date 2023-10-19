@@ -371,17 +371,16 @@ def train(config, param_dict):
     save_dir = training_params["save_dir"]
 
     patience_early_stopping = training_params["patience_early_stopping"]
-    model_file = os.path.join(save_dir, model_name)
+    model_save_file = os.path.join(save_dir, model_name)
 
-    log.info(f"model_name_file : {model_file}")
-
+    patience_counter = 0
     for epoch in trange(max_epochs, desc="Epoch"):
         log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
         train_loss = 0.0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             labels = batch["labels"]
-            print(f"batch_labels: {type(labels), labels}", flush=True)
+            # print(f"batch_labels: {type(labels), labels}", flush=True)
             context_ids_dict = train_dataset.get_context_ids(batch)
             context_ids_dict = {
                 key: value.to(device) for key, value in context_ids_dict.items()
@@ -447,6 +446,9 @@ def train(config, param_dict):
         log.info(f"Running Validation ...")
         val_loss = 0.0
         all_labels, all_logits = [], []
+
+        best_val_accuracy = 0.0
+
         model.eval()
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
             labels = batch["labels"]
@@ -496,15 +498,38 @@ def train(config, param_dict):
         )
         all_labels = torch.vstack(all_labels).reshape(-1, 1).detach().cpu().numpy()
 
-        print(f"val_all_logits: {logits.shape}", flush=True)
-        print(f"val_all_preds: {all_preds.shape}", flush=True)
+        print(f"val_all_logits: {all_logits.shape}, {all_logits}", flush=True)
+        print(f"val_all_preds: {all_preds.shape}, {all_preds}", flush=True)
         print(f"val_all_lables: {all_labels.shape}, {all_labels}", flush=True)
 
         scores = compute_scores(all_labels, all_preds)
-
         log.info(f"validation_scores")
         for key, value in scores.items():
             log.info(f"{key}: {value}")
+
+        running_val_accuracy = scores["accuracy"]
+        if running_val_accuracy <= best_val_accuracy:
+            patience_counter += 1
+
+            log.info(f"Previous Best Accuracy: {best_val_accuracy}")
+            log.info(f"Current Accuracy: {running_val_accuracy}")
+            log.info(f"Incrementing Patience Counter to: {patience_early_stopping}")
+
+        else:
+            patience_counter = 0
+            log.info(f"Previous Best Accuracy: {best_val_accuracy}")
+            log.info(f"Current Accuracy: {running_val_accuracy}")
+            log.info(f"Saving Model to: {model_save_file}")
+            torch.save(
+                model.state_dict(),
+                model_save_file,
+            )
+
+        if patience_counter >= patience_early_stopping:
+            log.info(
+                f"Early Stopping ---> Maximum Patience - {patience_counter} Reached !!"
+            )
+            break
 
 
 if __name__ == "__main__":
