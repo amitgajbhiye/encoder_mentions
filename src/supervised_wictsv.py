@@ -2,18 +2,18 @@ import torch
 import os
 import gc
 import torch.nn as nn
-import csv
+
 import numpy as np
 import pandas as pd
 import logging
 import time
 import re
+import sys
 
-import pickle
+sys.path.insert(0, os.getcwd())
 
 from get_mention_embeddings import ModelMentionEncoder as mention_encoder
 from get_definition_embeddings import ModelDefinitionEncoder as definition_encoder
-from multitask_con_prop_men_def import JointConceptPropDefMen
 
 
 from je_utils import read_config, set_seed, compute_scores
@@ -21,8 +21,16 @@ from early_stop import EarlyStopping
 from tqdm import tqdm, trange
 from argparse import ArgumentParser
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import RandomSampler, SequentialSampler
 from transformers import BertModel, BertForMaskedLM, BertTokenizer
 from torch.nn import BCEWithLogitsLoss
+
+
+from transformers import (
+    AdamW,
+    get_cosine_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
+)
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -171,17 +179,13 @@ class WiCTSVDataset(Dataset):
 
 
 class SupervisedWicTsv(nn.Module):
-    def __init__(self, config):
+    def __init__(self, model_params):
         super(SupervisedWicTsv, self).__init__()
 
-        inference_params = config["inference_params"]
-        dataset_params = config["dataset_params"]
-        model_params = config["model_params"]
+        # model_params = config["model_params"]
 
-        pretrained_mention_model_path = inference_params[
-            "pretrained_mention_model_path"
-        ]
-        pretrained_definition_model_path = inference_params[
+        pretrained_mention_model_path = model_params["pretrained_mention_model_path"]
+        pretrained_definition_model_path = model_params[
             "pretrained_definition_model_path"
         ]
 
@@ -206,49 +210,13 @@ class SupervisedWicTsv(nn.Module):
             flush=True,
         )
 
-        self.tokenizer = BertTokenizer.from_pretrained(
-            dataset_params["hf_tokenizer_path"]
-        )
-        self.max_len = dataset_params["max_len"]
-        self.classifier = nn.Linear(2 * self.men_model.hidden_size, 1)
         self.dropout = nn.Dropout(2 * self.men_model.hidden_dropout_prob)
+        self.classifier = nn.Linear(2 * self.men_model.hidden_size, 1)
 
-    def get_mention_embeds(self, context_sents):
-        ids_dict = self.tokenizer.batch_encode_plus(
-            batch_text_or_text_pairs=context_sents,
-            max_length=self.max_len,
-            add_special_tokens=True,
-            padding="max_length",
-            truncation=True,
-            return_tensors="pt",
-            return_token_type_ids=True,
-        )
-
-        ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
-        mention_vectors = self.men_model(pretrained_con_embeds=None, **ids_dict)
-
-        return mention_vectors
-
-    def get_definition_embeds(self, definition_sents):
-        ids_dict = self.tokenizer.batch_encode_plus(
-            batch_text_or_text_pairs=definition_sents,
-            max_length=self.max_len,
-            add_special_tokens=True,
-            padding="max_length",
-            truncation=True,
-            return_tensors="pt",
-            return_token_type_ids=True,
-        )
-
-        ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
-        def_vectors = self.def_model(pretrained_con_embeds=None, **ids_dict)
-
-        return def_vectors
-
-    def forward(self, contexts):
-        mention_embeds = self.get_mention_embeds(context_sents=context_sents)
-        definition_embeds = self.get_definition_embeds(
-            definition_sents=definition_sents
+    def forward(self, context_ids_dict, definition_ids_dict, labels=None):
+        mention_embeds = self.men_model(pretrained_con_embeds=None, **context_ids_dict)
+        definition_embeds = self.def_model(
+            pretrained_con_embeds=None, **definition_ids_dict
         )
 
         concatenated_embeds = torch.cat((mention_embeds, definition_embeds), dim=1)
@@ -263,9 +231,9 @@ class SupervisedWicTsv(nn.Module):
 
         outputs = (logits,)
 
-        if label is not None:
+        if labels is not None:
             loss_fct = BCEWithLogitsLoss()
-            loss = loss_fct(logits.squeeze(1), label)
+            loss = loss_fct(logits.squeeze(1), labels)
             outputs = (loss,) + outputs
 
         return outputs
@@ -280,8 +248,8 @@ def prepare_data_and_models(config):
     model_params = config["model_params"]
     ############
 
-    load_pretrained = training_params["load_pretrained"]
-    pretrained_model_path = training_params["pretrained_model_path"]
+    # load_pretrained = training_params["load_pretrained"]
+
     lr = training_params["lr"]
     weight_decay = training_params["weight_decay"]
     max_epochs = training_params["max_epochs"]
@@ -293,14 +261,8 @@ def prepare_data_and_models(config):
     num_workers = 4
 
     if train_file is not None:
-        train_dataset = DatasetConceptSentence(train_file, dataset_params)
-        train_sampler = MPerClassSampler(
-            train_dataset.data_df["labels"],
-            m=1,
-            batch_size=batch_size,
-            length_before_new_iter=len(train_dataset.data_df["labels"]),
-        )
-
+        train_dataset = WiCTSVDataset(datatype="train", dataset_params=dataset_params)
+        train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(
             train_dataset,
             batch_size=batch_size,
@@ -311,18 +273,15 @@ def prepare_data_and_models(config):
         )
 
         log.info(f"Train Data DF shape : {train_dataset.data_df.shape}")
+
     else:
         log.info(f"Train File is Empty.")
         train_dataloader = None
 
     if valid_file is not None:
-        val_dataset = DatasetConceptSentence(valid_file, dataset_params)
-        val_sampler = MPerClassSampler(
-            val_dataset.data_df["labels"],
-            m=1,
-            batch_size=batch_size,
-            length_before_new_iter=len(val_dataset.data_df["labels"]),
-        )
+        val_dataset = WiCTSVDataset(datatype="valid", dataset_params=dataset_params)
+        val_sampler = RandomSampler(val_dataset)
+
         val_dataloader = DataLoader(
             val_dataset,
             batch_size=batch_size,
@@ -333,21 +292,18 @@ def prepare_data_and_models(config):
             drop_last=False,
         )
         log.info(f"Valid Data DF shape : {val_dataset.data_df.shape}")
-    else:
-        log.info(f"Validation File is Empty.")
-        val_dataloader = None
 
     ########### Creating Model ###########
-    model = ModelDefinitionEncoder(model_params=model_params)
+    model = SupervisedWicTsv(model_params=model_params)
 
-    log.info(f"Load Pretrained : {load_pretrained}")
-    log.info(f"Pretrained Model Path : {pretrained_model_path}")
-    if load_pretrained:
-        log.info(f"load_pretrained is : {load_pretrained}")
-        log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
-        model.load_state_dict(torch.load(pretrained_model_path))
+    # log.info(f"Load Pretrained : {load_pretrained}")
+    # log.info(f"Pretrained Model Path : {pretrained_model_path}")
+    # if load_pretrained:
+    #     log.info(f"load_pretrained is : {load_pretrained}")
+    #     log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
+    #     model.load_state_dict(torch.load(pretrained_model_path))
 
-        log.info(f"Loaded Pretrained Model")
+    #     log.info(f"Loaded Pretrained Model")
 
     if torch.cuda.is_available():
         n_gpu = torch.cuda.device_count()
@@ -403,44 +359,38 @@ def train(config, param_dict):
     max_epochs = training_params["max_epochs"]
     model_name = training_params["model_name"]
     save_dir = training_params["save_dir"]
+
     patience_early_stopping = training_params["patience_early_stopping"]
     model_file = os.path.join(save_dir, model_name)
 
-    early_stopping = EarlyStopping(
-        patience=patience_early_stopping, verbose=True, path=model_file, delta=1e-10
-    )
-
     log.info(f"model_name_file : {model_file}")
-
-    pretrained_con_embeds_path = training_params["pretrained_con_embeds_path"]
-    with open(pretrained_con_embeds_path, "rb") as embed_pkl:
-        pretrained_con_embeds_dict = pickle.load(embed_pkl)
 
     for epoch in trange(max_epochs, desc="Epoch"):
         log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
         train_loss = 0.0
         model.train()
         for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
-            #####################
-            print(flush=True)
-            print(
-                f"batch['concept']: {len(batch['concept'])}, {batch['concept']}",
-                flush=True,
-            )
-            print(f"batch['sent']: {len(batch['sent'])}, {batch['sent']}", flush=True)
+            labels = batch["labels"]
+            print(f"batch_labels: {type(labels), labels}", flush=True)
+            context_ids_dict = train_dataset.get_context_ids(batch)
+            context_ids_dict = {
+                key: value.to(device) for key, value in context_ids_dict.items()
+            }
 
-            pretrained_con_embeds = torch.tensor(
-                [pretrained_con_embeds_dict[con] for con in batch["concept"]]
-            ).to(device)
-
-            print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
-
-            ids_dict = train_dataset.get_sent_ids(batch)
-            ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
+            definition_ids_dict = train_dataset.get_definition_ids(batch)
+            definition_ids_dict = {
+                key: value.to(device) for key, value in definition_ids_dict.items()
+            }
 
             model.zero_grad()
-            outputs = model(pretrained_con_embeds=pretrained_con_embeds, **ids_dict)
-            loss, _ = outputs
+            outputs = model(
+                context_ids_dict=context_ids_dict,
+                definition_ids_dict=definition_ids_dict,
+                labels=labels,
+            )
+            loss, logits = outputs
+
+            print(f"batch_logits: {type(logits), logits}", flush=True)
 
             if isinstance(model, nn.DataParallel):
                 loss = loss.mean()
@@ -452,12 +402,25 @@ def train(config, param_dict):
             train_loss += loss.item()
 
             if (step + 1) % 100 == 0:
-                log.info(
-                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+                labels = labels.reshape(-1, 1).detach().cpu().numpy()
+                logits = (
+                    torch.round(torch.sigmoid(logits))
+                    .reshape(-1, 1)
+                    .detach()
+                    .cpu()
+                    .numpy()
                 )
 
-            del ids_dict
-            del pretrained_con_embeds
+                scores = compute_scores(labels, logits)
+
+                log.info(
+                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}, Accuracy: {scores['accuracy']}"
+                )
+
+            del context_ids_dict
+            del definition_ids_dict
+            del labels
+            del logits
             del loss
             gc.collect()
 
@@ -468,52 +431,58 @@ def train(config, param_dict):
         torch.cuda.empty_cache()
 
         # Validation
-        model.eval()
         val_loss = 0.0
+        all_labels, all_logits = [], []
+        model.eval()
         for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
-            pretrained_con_embeds = torch.tensor(
-                [pretrained_con_embeds_dict[con] for con in batch["concept"]]
-            ).to(device)
+            labels = batch["labels"]
+            print(f"val_batch_labels: {type(labels), labels}", flush=True)
 
-            ids_dict = val_dataset.get_sent_ids(batch)
-            ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
+            context_ids_dict = val_dataset.get_context_ids(batch)
+            context_ids_dict = {
+                key: value.to(device) for key, value in context_ids_dict.items()
+            }
+
+            definition_ids_dict = val_dataset.get_definition_ids(batch)
+            definition_ids_dict = {
+                key: value.to(device) for key, value in definition_ids_dict.items()
+            }
 
             with torch.no_grad():
-                outputs = model(pretrained_con_embeds=pretrained_con_embeds, **ids_dict)
+                outputs = model(
+                    context_ids_dict=context_ids_dict,
+                    definition_ids_dict=definition_ids_dict,
+                )
 
-            loss, _ = outputs
+            loss, logits = outputs
+
+            print("val_batch_lables: {labels}", flush=True)
+            print("val_batch_logits: {logits}", flush=True)
 
             if isinstance(model, nn.DataParallel):
                 loss = loss.mean()
+
             val_loss += loss.item()
 
-            del ids_dict
-            del loss
-            gc.collect()
+            all_labels.extend(labels)
+            all_logits.extend(logits)
 
-        log.info(f"val_step: {step}")
-        val_loss /= step + 1
-
-        del step
-
-        log.info(
-            "Epoch: %d | train loss: %.4f | val loss: %.4f ",
-            epoch + 1,
-            train_loss,
-            val_loss,
+        preds = (
+            torch.round(torch.sigmoid(torch.vstack(all_logits)))
+            .reshape(-1, 1)
+            .detach()
+            .cpu()
+            .numpy()
         )
+        labels = torch.vstack(labels).reshape(-1, 1).detach().cpu().numpy()
 
-        torch.cuda.empty_cache()
+        print("val_all_lables: {labels}", flush=True)
+        print("val_all_logits: {logits}", flush=True)
 
-        if epoch >= 1:
-            early_stopping(val_loss, model)
+        scores = compute_scores(labels, preds)
 
-        if early_stopping.early_stop:
-            log.info("Early stopping. Model trained")
-            log.info(f"Trained Model is saved at ; {model_file}")
-            break
-
-    torch.cuda.empty_cache()
+        for key, value in scores.items():
+            log.info(f"{key}: {value}")
 
 
 if __name__ == "__main__":
@@ -538,189 +507,186 @@ if __name__ == "__main__":
     log.info(f"\n {config} \n")
 
     param_dict = prepare_data_and_models(config=config)
-
     train(config=config, param_dict=param_dict)
-else:
-    log = logging.getLogger(__name__)
 
 
-if __name__ == "__main__":
-    set_seed(1)
+# if __name__ == "__main__":
+#     set_seed(1)
 
-    parser = ArgumentParser(description="WiCTSV Evaluation")
+#     parser = ArgumentParser(description="WiCTSV Evaluation")
 
-    parser.add_argument(
-        "--config_file",
-        default="configs/default_config.json",
-        help="path to the configuration file",
-    )
+#     parser.add_argument(
+#         "--config_file",
+#         default="configs/default_config.json",
+#         help="path to the configuration file",
+#     )
 
-    args = parser.parse_args()
+#     args = parser.parse_args()
 
-    print(f"Reading Configuration File: {args.config_file}", flush=True)
-    config = read_config(args.config_file)
+#     print(f"Reading Configuration File: {args.config_file}", flush=True)
+#     config = read_config(args.config_file)
 
-    print("The model is run with the following configuration", flush=True)
-    print(f"\n {config} \n", flush=True)
+#     print("The model is run with the following configuration", flush=True)
+#     print(f"\n {config} \n", flush=True)
 
-    model_type = config["inference_params"]["model_type"]
-    ######## Creating Model ########
-    if model_type == "multitask":
-        un_wictsv = MultitaskUnsupervisedWicTsv(config=config)
-    else:
-        un_wictsv = UnsupervisedWicTsv(config=config)
+#     model_type = config["inference_params"]["model_type"]
+#     ######## Creating Model ########
+#     if model_type == "multitask":
+#         un_wictsv = MultitaskUnsupervisedWicTsv(config=config)
+#     else:
+#         un_wictsv = UnsupervisedWicTsv(config=config)
 
-    inference_params = config["inference_params"]
-    batch_size = inference_params["batch_size"]
-    wictsv_file = inference_params["wictsv_test_file"]
+#     inference_params = config["inference_params"]
+#     batch_size = inference_params["batch_size"]
+#     wictsv_file = inference_params["wictsv_test_file"]
 
-    data = _read_tsv(wictsv_file)[1:]  # word idx context definition domain hypernym
-    data_df = pd.DataFrame.from_records(data)
-    data_df.rename(
-        columns={
-            0: "word",
-            1: "idx",
-            2: "context",
-            3: "definition",
-            4: "domain",
-            5: "hypernym",
-        },
-        inplace=True,
-    )
+#     data = _read_tsv(wictsv_file)[1:]  # word idx context definition domain hypernym
+#     data_df = pd.DataFrame.from_records(data)
+#     data_df.rename(
+#         columns={
+#             0: "word",
+#             1: "idx",
+#             2: "context",
+#             3: "definition",
+#             4: "domain",
+#             5: "hypernym",
+#         },
+#         inplace=True,
+#     )
 
-    # Reading Labels
-    if inference_params["label_file"]:
-        label = np.array(_read_tsv(inference_params["label_file"])).flatten()
-        label = np.array([1 if l == "T" else 0 for l in label], dtype=int)
+#     # Reading Labels
+#     if inference_params["label_file"]:
+#         label = np.array(_read_tsv(inference_params["label_file"])).flatten()
+#         label = np.array([1 if l == "T" else 0 for l in label], dtype=int)
 
-        print(f"label : {label}", flush=True)
+#         print(f"label : {label}", flush=True)
 
-        assert (
-            data_df.shape[0] == label.shape[0]
-        ), "Number of input records is not equal to labels"
+#         assert (
+#             data_df.shape[0] == label.shape[0]
+#         ), "Number of input records is not equal to labels"
 
-        data_df["label"] = label
+#         data_df["label"] = label
 
-    print(f"data_df.columns : {data_df.columns}", flush=True)
-    print(f"data_df : {data_df}", flush=True)
+#     print(f"data_df.columns : {data_df.columns}", flush=True)
+#     print(f"data_df : {data_df}", flush=True)
 
-    # test_domain: '0': 717, - WNT/WKT # -1 in configfile
-    # test_domain: '1': 205, - MSH
-    # test_domain: '2': 216, - CTL
-    # test_domain: '3': 168, - CPS
+#     # test_domain: '0': 717, - WNT/WKT # -1 in configfile
+#     # test_domain: '1': 205, - MSH
+#     # test_domain: '2': 216, - CTL
+#     # test_domain: '3': 168, - CPS
 
-    data_type = config["dataset_params"]["dataset_name"]
+#     data_type = config["dataset_params"]["dataset_name"]
 
-    if data_type == "wictsv_devset":
-        # For getting classification thresholds form dev data.
-        test_domains = [("4", "all")]
+#     if data_type == "wictsv_devset":
+#         # For getting classification thresholds form dev data.
+#         test_domains = [("4", "all")]
 
-    else:
-        test_domains = [
-            ("0", "WNT_WKT"),
-            ("1", "MSH"),
-            ("2", "CTL"),
-            ("3", "CPS"),
-            ("4", "all"),
-        ]
+#     else:
+#         test_domains = [
+#             ("0", "WNT_WKT"),
+#             ("1", "MSH"),
+#             ("2", "CTL"),
+#             ("3", "CPS"),
+#             ("4", "all"),
+#         ]
 
-    for domain_id, domain in test_domains:
-        print(
-            f"******* Testing on domain_id: {domain_id}, domain: {domain} *******",
-            flush=True,
-        )
+#     for domain_id, domain in test_domains:
+#         print(
+#             f"******* Testing on domain_id: {domain_id}, domain: {domain} *******",
+#             flush=True,
+#         )
 
-        if domain_id in ("0", "1", "2", "3"):
-            domain_data_df = data_df[data_df["domain"] == domain_id]
-        else:
-            print(f"*** Testing on All Domains ***")
-            domain_data_df = data_df
+#         if domain_id in ("0", "1", "2", "3"):
+#             domain_data_df = data_df[data_df["domain"] == domain_id]
+#         else:
+#             print(f"*** Testing on All Domains ***")
+#             domain_data_df = data_df
 
-        print(f"num_test_instance : {len(domain_data_df)}", flush=True)
+#         print(f"num_test_instance : {len(domain_data_df)}", flush=True)
 
-        all_preds, all_labels = [], []
+#         all_preds, all_labels = [], []
 
-        for batch_no, i in enumerate(range(0, len(domain_data_df), batch_size)):
-            print(flush=True)
-            print(
-                f"Processing Batch : {batch_no} / {len(domain_data_df) // batch_size + 1}",
-                flush=True,
-            )
+#         for batch_no, i in enumerate(range(0, len(domain_data_df), batch_size)):
+#             print(flush=True)
+#             print(
+#                 f"Processing Batch : {batch_no} / {len(domain_data_df) // batch_size + 1}",
+#                 flush=True,
+#             )
 
-            words, context_sents, definitions, batch_labels = (
-                [],
-                [],
-                [],
-                [],
-            )
+#             words, context_sents, definitions, batch_labels = (
+#                 [],
+#                 [],
+#                 [],
+#                 [],
+#             )
 
-            batch = domain_data_df.values[i : i + batch_size]
+#             batch = domain_data_df.values[i : i + batch_size]
 
-            for word, _, context, definition, _, _, label in batch:
-                words.append(word)
-                context_sents.append(
-                    context.lower().replace(
-                        word.lower(), un_wictsv.tokenizer.mask_token
-                    )
-                )
-                definitions.append(
-                    un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
-                )
-                batch_labels.append(label)
+#             for word, _, context, definition, _, _, label in batch:
+#                 words.append(word)
+#                 context_sents.append(
+#                     context.lower().replace(
+#                         word.lower(), un_wictsv.tokenizer.mask_token
+#                     )
+#                 )
+#                 definitions.append(
+#                     un_wictsv.tokenizer.mask_token + ":" + " " + definition.lower()
+#                 )
+#                 batch_labels.append(label)
 
-            print(f"***words : {len(words)}, {words}", flush=True)
-            print(flush=True)
-            print(
-                f"***context_sents : {len(context_sents)}, {context_sents}", flush=True
-            )
-            print(flush=True)
-            print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
-            print(f"***batch_labels : {len(batch_labels)}, {batch_labels}", flush=True)
+#             print(f"***words : {len(words)}, {words}", flush=True)
+#             print(flush=True)
+#             print(
+#                 f"***context_sents : {len(context_sents)}, {context_sents}", flush=True
+#             )
+#             print(flush=True)
+#             print(f"***definitions : {len(definitions)}, {definitions}", flush=True)
+#             print(f"***batch_labels : {len(batch_labels)}, {batch_labels}", flush=True)
 
-            assert len(context_sents) == len(
-                definitions
-            ), "In batch context_sents len not equal to definitions."
+#             assert len(context_sents) == len(
+#                 definitions
+#             ), "In batch context_sents len not equal to definitions."
 
-            cosine_distance = un_wictsv(
-                context_sents=context_sents, definition_sents=definitions
-            )
+#             cosine_distance = un_wictsv(
+#                 context_sents=context_sents, definition_sents=definitions
+#             )
 
-            all_preds.extend(cosine_distance)
-            all_labels.extend(batch_labels)
+#             all_preds.extend(cosine_distance)
+#             all_labels.extend(batch_labels)
 
-        probs_pkl_file = os.path.join(
-            inference_params["save_dir"],
-            f"{config['experiment_name']}_{domain_id}_{domain}.pkl",
-        )
+#         probs_pkl_file = os.path.join(
+#             inference_params["save_dir"],
+#             f"{config['experiment_name']}_{domain_id}_{domain}.pkl",
+#         )
 
-        with open(probs_pkl_file, "wb") as pkl_file:
-            pickle.dump(all_preds, pkl_file)
+#         with open(probs_pkl_file, "wb") as pkl_file:
+#             pickle.dump(all_preds, pkl_file)
 
-        if data_type == "wictsv_devset":
-            break
+#         if data_type == "wictsv_devset":
+#             break
 
-        def to_labels(probs, threshold):
-            return (probs <= threshold).astype("int")
+#         def to_labels(probs, threshold):
+#             return (probs <= threshold).astype("int")
 
-        classification_thresh = inference_params["classification_thresh"]
+#         classification_thresh = inference_params["classification_thresh"]
 
-        assert (
-            classification_thresh is not None
-        ), f"Specify classification_thresh. It is: {classification_thresh} now."
+#         assert (
+#             classification_thresh is not None
+#         ), f"Specify classification_thresh. It is: {classification_thresh} now."
 
-        all_preds = to_labels(
-            probs=np.array(all_preds), threshold=classification_thresh
-        )
-        scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
+#         all_preds = to_labels(
+#             probs=np.array(all_preds), threshold=classification_thresh
+#         )
+#         scores = compute_scores(labels=np.array(all_labels), preds=all_preds)
 
-        print(f"all_labels: {len(all_labels)}, {all_labels}", flush=True)
-        print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
+#         print(f"all_labels: {len(all_labels)}, {all_labels}", flush=True)
+#         print(f"all_preds: {len(all_preds)}, {all_preds}", flush=True)
 
-        print(flush=True)
-        print(
-            f"******* Results on domain_id: {domain_id}, domain: {domain} records: {domain_data_df.shape[0]}*******",
-            flush=True,
-        )
-        for key, value in scores.items():
-            print(key, ":", value, flush=True)
-        print(flush=True)
+#         print(flush=True)
+#         print(
+#             f"******* Results on domain_id: {domain_id}, domain: {domain} records: {domain_data_df.shape[0]}*******",
+#             flush=True,
+#         )
+#         for key, value in scores.items():
+#             print(key, ":", value, flush=True)
+#         print(flush=True)
