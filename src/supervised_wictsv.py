@@ -374,8 +374,9 @@ def train(config, param_dict):
 
     best_val_accuracy = 0.0
     patience_counter = 0
+
     for epoch in trange(max_epochs, desc="Epoch"):
-        log.info(f"{'*'} * 80")
+        log.info(f"{'*' * 80}")
         log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
         train_loss = 0.0
         model.train()
@@ -536,7 +537,7 @@ def train(config, param_dict):
             )
             break
 
-        return model_save_file
+    return model_save_file
 
 
 def test_best_model(config):
@@ -683,7 +684,6 @@ if __name__ == "__main__":
     best_model_path = train(config=config, param_dict=param_dict)
 
     config["training_params"]["best_model_path"] = best_model_path
-
     test_best_model(config)
 
 
