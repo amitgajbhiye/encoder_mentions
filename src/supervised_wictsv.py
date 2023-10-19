@@ -498,7 +498,7 @@ def train(config, param_dict):
         )
         all_labels = torch.vstack(all_labels).reshape(-1, 1).detach().cpu().numpy()
 
-        print(f"val_all_logits: {all_logits.shape}, {all_logits}", flush=True)
+        print(f"val_all_logits: {len(all_logits)}, {all_logits}", flush=True)
         print(f"val_all_preds: {all_preds.shape}, {all_preds}", flush=True)
         print(f"val_all_lables: {all_labels.shape}, {all_labels}", flush=True)
 
