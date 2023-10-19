@@ -73,7 +73,7 @@ class WiCTSVDataset(Dataset):
         elif datatype == "test":
             self.file_path = dataset_params["test_file_path"]
 
-        self.data_df = pd.read_csv(self.file_path, sep="\t")
+        self.data_df = pd.read_csv(self.file_path, sep="\t")[0:500]
 
         log.info(f"datatype: {datatype}")
         log.info(f"file_path: {self.file_path}")
@@ -400,6 +400,7 @@ def train(config, param_dict):
             )
             loss, logits = outputs
 
+            print(flush=True)
             print(f"train_batch_logits: {type(logits), logits}", flush=True)
             print(f"train_batch_label: {type(labels), labels}", flush=True)
 
@@ -478,22 +479,28 @@ def train(config, param_dict):
 
             val_loss += loss.item()
 
-            all_labels.extend(labels)
             all_logits.extend(logits)
+            all_labels.extend(labels)
 
-        preds = (
+            del context_ids_dict
+            del definition_ids_dict
+            del loss
+            gc.collect()
+
+        all_preds = (
             torch.round(torch.sigmoid(torch.vstack(all_logits)))
             .reshape(-1, 1)
             .detach()
             .cpu()
             .numpy()
         )
-        labels = torch.vstack(labels).reshape(-1, 1).detach().cpu().numpy()
+        all_labels = torch.vstack(all_labels).reshape(-1, 1).detach().cpu().numpy()
 
-        print("val_all_lables: {labels}", flush=True)
-        print("val_all_logits: {logits}", flush=True)
+        print(f"val_all_logits: {logits.shape}", flush=True)
+        print(f"val_all_preds: {all_preds.shape}", flush=True)
+        print(f"val_all_lables: {all_labels.shape}, {all_labels}", flush=True)
 
-        scores = compute_scores(labels, preds)
+        scores = compute_scores(all_labels, all_preds)
 
         log.info(f"validation_scores")
         for key, value in scores.items():
