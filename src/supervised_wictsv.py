@@ -210,7 +210,7 @@ class SupervisedWicTsv(nn.Module):
         dropout_prop = model_params["dropout_prob"]
 
         self.dropout = nn.Dropout(dropout_prop)
-        self.classifier = nn.Linear(2 * self.men_model.module.encoder.hidden_size, 1)
+        self.classifier = nn.Linear(2 * 1024, 1)
 
     def forward(self, context_ids_dict, definition_ids_dict, labels=None):
         mention_embeds = self.men_model(pretrained_con_embeds=None, **context_ids_dict)
