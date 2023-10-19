@@ -1,5 +1,6 @@
 import torch
 import os
+import gc
 import torch.nn as nn
 import csv
 import numpy as np
@@ -7,8 +8,6 @@ import pandas as pd
 import logging
 import time
 import re
-from scipy.spatial import distance
-
 
 import pickle
 
@@ -18,6 +17,8 @@ from multitask_con_prop_men_def import JointConceptPropDefMen
 
 
 from je_utils import read_config, set_seed, compute_scores
+from early_stop import EarlyStopping
+from tqdm import tqdm, trange
 from argparse import ArgumentParser
 from torch.utils.data import DataLoader, Dataset
 from transformers import BertModel, BertForMaskedLM, BertTokenizer
@@ -192,6 +193,7 @@ class SupervisedWicTsv(nn.Module):
         self.def_model = nn.DataParallel(definition_encoder(model_params=model_params))
         self.def_model.to(device=device)
 
+        # Loading pretrained models
         self.men_model.load_state_dict(torch.load(pretrained_mention_model_path))
         self.def_model.load_state_dict(torch.load(pretrained_definition_model_path))
 
@@ -243,7 +245,7 @@ class SupervisedWicTsv(nn.Module):
 
         return def_vectors
 
-    def forward(self, context_sents, definition_sents, hypernyms=None, labels=None):
+    def forward(self, contexts):
         mention_embeds = self.get_mention_embeds(context_sents=context_sents)
         definition_embeds = self.get_definition_embeds(
             definition_sents=definition_sents
@@ -356,6 +358,8 @@ def prepare_data_and_models(config):
 
     log.info(f"model_class : {model.__class__.__name__}")
 
+    # print number of trainable and non traininble parameter here
+
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     if training_params["lr_schedule"] == "linear":
@@ -384,6 +388,134 @@ def prepare_data_and_models(config):
     }
 
 
+def train(config, param_dict):
+    model = param_dict["model"]
+    scheduler = param_dict["scheduler"]
+    optimizer = param_dict["optimizer"]
+
+    train_dataset = param_dict["train_dataset"]
+    train_dataloader = param_dict["train_dataloader"]
+
+    val_dataset = param_dict["val_dataset"]
+    val_dataloader = param_dict["val_dataloader"]
+
+    training_params = config["training_params"]
+    max_epochs = training_params["max_epochs"]
+    model_name = training_params["model_name"]
+    save_dir = training_params["save_dir"]
+    patience_early_stopping = training_params["patience_early_stopping"]
+    model_file = os.path.join(save_dir, model_name)
+
+    early_stopping = EarlyStopping(
+        patience=patience_early_stopping, verbose=True, path=model_file, delta=1e-10
+    )
+
+    log.info(f"model_name_file : {model_file}")
+
+    pretrained_con_embeds_path = training_params["pretrained_con_embeds_path"]
+    with open(pretrained_con_embeds_path, "rb") as embed_pkl:
+        pretrained_con_embeds_dict = pickle.load(embed_pkl)
+
+    for epoch in trange(max_epochs, desc="Epoch"):
+        log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
+        train_loss = 0.0
+        model.train()
+        for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+            #####################
+            print(flush=True)
+            print(
+                f"batch['concept']: {len(batch['concept'])}, {batch['concept']}",
+                flush=True,
+            )
+            print(f"batch['sent']: {len(batch['sent'])}, {batch['sent']}", flush=True)
+
+            pretrained_con_embeds = torch.tensor(
+                [pretrained_con_embeds_dict[con] for con in batch["concept"]]
+            ).to(device)
+
+            print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
+
+            ids_dict = train_dataset.get_sent_ids(batch)
+            ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
+
+            model.zero_grad()
+            outputs = model(pretrained_con_embeds=pretrained_con_embeds, **ids_dict)
+            loss, _ = outputs
+
+            if isinstance(model, nn.DataParallel):
+                loss = loss.mean()
+
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+
+            train_loss += loss.item()
+
+            if (step + 1) % 100 == 0:
+                log.info(
+                    f"Epoch [{epoch + 1}/{max_epochs}], Step [{step + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+                )
+
+            del ids_dict
+            del pretrained_con_embeds
+            del loss
+            gc.collect()
+
+        log.info(f"train_step: {step}")
+        train_loss /= step + 1
+
+        del step
+        torch.cuda.empty_cache()
+
+        # Validation
+        model.eval()
+        val_loss = 0.0
+        for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
+            pretrained_con_embeds = torch.tensor(
+                [pretrained_con_embeds_dict[con] for con in batch["concept"]]
+            ).to(device)
+
+            ids_dict = val_dataset.get_sent_ids(batch)
+            ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
+
+            with torch.no_grad():
+                outputs = model(pretrained_con_embeds=pretrained_con_embeds, **ids_dict)
+
+            loss, _ = outputs
+
+            if isinstance(model, nn.DataParallel):
+                loss = loss.mean()
+            val_loss += loss.item()
+
+            del ids_dict
+            del loss
+            gc.collect()
+
+        log.info(f"val_step: {step}")
+        val_loss /= step + 1
+
+        del step
+
+        log.info(
+            "Epoch: %d | train loss: %.4f | val loss: %.4f ",
+            epoch + 1,
+            train_loss,
+            val_loss,
+        )
+
+        torch.cuda.empty_cache()
+
+        if epoch >= 1:
+            early_stopping(val_loss, model)
+
+        if early_stopping.early_stop:
+            log.info("Early stopping. Model trained")
+            log.info(f"Trained Model is saved at ; {model_file}")
+            break
+
+    torch.cuda.empty_cache()
+
+
 if __name__ == "__main__":
     set_seed(1)
 
@@ -410,119 +542,6 @@ if __name__ == "__main__":
     train(config=config, param_dict=param_dict)
 else:
     log = logging.getLogger(__name__)
-
-
-class MultitaskSupervisedWicTsv(nn.Module):
-    def __init__(self, config):
-        super(MultitaskSupervisedWicTsv, self).__init__()
-
-        inference_params = config["inference_params"]
-        dataset_params = config["dataset_params"]
-        model_params = config["model_params"]
-
-        pretrained_multitask_model_path = inference_params[
-            "pretrained_multitask_model_path"
-        ]
-
-        # Creating and loading Multitask Model
-        self.multitask_model = JointConceptPropDefMen(model_params=model_params)
-        self.multitask_model.to(device=device)
-        self.multitask_model.load_state_dict(
-            torch.load(pretrained_multitask_model_path)
-        )
-
-        print(
-            f"Multitask Model is loaded from : {pretrained_multitask_model_path}",
-            flush=True,
-        )
-        print(
-            f"multitask_model_class: {self.multitask_model.__class__.__name__}",
-            flush=True,
-        )
-
-        self.tokenizer = BertTokenizer.from_pretrained(
-            dataset_params["hf_tokenizer_path"]
-        )
-        self.max_len = dataset_params["max_len"]
-
-    def multitask_get_context_mention_embeds(self, context_sents, definition_sents):
-        mention_encodings = self.tokenizer.batch_encode_plus(
-            batch_text_or_text_pairs=context_sents,
-            max_length=self.max_len,
-            add_special_tokens=True,
-            padding="max_length",
-            truncation=True,
-            return_tensors="pt",
-            return_token_type_ids=True,
-        )
-
-        definition_encodings = self.tokenizer.batch_encode_plus(
-            batch_text_or_text_pairs=definition_sents,
-            max_length=self.max_len,
-            add_special_tokens=True,
-            padding="max_length",
-            truncation=True,
-            return_tensors="pt",
-            return_token_type_ids=True,
-        )
-
-        mention_encodings = {
-            key: value.to(device) for key, value in mention_encodings.items()
-        }
-        definition_encodings = {
-            key: value.to(device) for key, value in definition_encodings.items()
-        }
-
-        input_ids_and_labels = {
-            "con_prop_encodings": None,
-            "property_encodings": None,
-            "con_prop_labels": None,
-            ###
-            "con_def_encodings": None,
-            "definition_encodings": definition_encodings,
-            "con_defs_labels": None,
-            ###
-            "con_mens_encodings": None,
-            "mention_encodings": mention_encodings,
-            "con_mens_labels": None,
-        }
-
-        ### Multitask Model
-
-        outputs = self.multitask_model(input_ids_and_labels)
-
-        mention_vectors = outputs["men_masks"]
-        def_vectors = outputs["def_masks"]
-
-        return mention_vectors, def_vectors
-
-    def forward(self, context_sents, definition_sents):
-        mention_embeds, definition_embeds = self.multitask_get_context_mention_embeds(
-            context_sents=context_sents, definition_sents=definition_sents
-        )
-
-        print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
-        print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
-
-        cosine_distances = []
-        for men_emb, def_emb in zip(mention_embeds, definition_embeds):
-            cos_dist = distance.cosine(men_emb.cpu().numpy(), def_emb.cpu().numpy())
-            # print(f"cos_dist: {type(cos_dist)}, {cos_dist}")
-            cosine_distances.append(cos_dist.item())
-
-        print(f"cosine_distances : {cosine_distances}", flush=True)
-
-        return cosine_distances
-
-
-def _read_tsv(input_file, quotechar=None):
-    """Reads a tab separated file."""
-    with open(input_file, "r", encoding="utf-8") as f:
-        reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
-        lines = []
-        for line in reader:
-            lines.append(line)
-        return lines
 
 
 if __name__ == "__main__":
