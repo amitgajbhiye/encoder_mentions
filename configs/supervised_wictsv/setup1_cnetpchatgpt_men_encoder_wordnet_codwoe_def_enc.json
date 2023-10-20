@@ -24,7 +24,7 @@
         "lr": 2e-6,
         "max_epochs": 100,
         "warmup_ratio": 0,
-        "patience_early_stopping": 2,
+        "patience_early_stopping": 10,
         "save_dir": "trained_models/supervised_wictsv",
         "model_name": "setup1_dot_product_model_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc",
         "weight_decay": 0.01
