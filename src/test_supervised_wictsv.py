@@ -136,6 +136,10 @@ class WiCTSVDataset(Dataset):
         return mask_sent
 
     def get_context_ids(self, batch):
+        print(flush=True)
+        print(f'batch["word"]: {batch["word"]}', flush=True)
+        print(f'batch["contexts"]: {batch["contexts"]}', flush=True)
+
         masked_contexts = [
             self.mask_word_in_context(word, context)
             for word, context in zip(batch["word"], batch["contexts"])
@@ -555,6 +559,10 @@ def test_best_model(config):
     test_file = dataset_params["test_file_path"]
     test_df = pd.read_csv(test_file, sep="\t", dtype={"domain": str})
 
+    test_df["word"] = test_df["word"].astype(str).lower()
+    test_df["contexts"] = test_df["contexts"].astype(str).lower()
+    test_df["definitions"] = test_df["definitions"].astype(str).lower()
+
     training_params = config["training_params"]
     batch_size = training_params["batch_size"]
 
@@ -685,8 +693,12 @@ if __name__ == "__main__":
     log.info("The model is run with the following configuration")
     log.info(f"\n {config} \n")
 
-    lrs = [2e-6, 1e-5]
-    batch_sizes = [4, 8]
+    best_model_path = "trained_models/supervised_wictsv/val_acc_0.7352_lr_2e-06_bs_4setup1_dot_product_model_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.pt"
+    config["training_params"]["best_model_path"] = best_model_path
+    test_best_model(config)
+
+    # lrs = [2e-6, 1e-5]
+    # batch_sizes = [4, 8]
 
     # for lr in lrs:
     #     for batch_size in batch_sizes:
@@ -707,7 +719,3 @@ if __name__ == "__main__":
     #         log.info(f"{'*' * 80}")
     #         log.info(f"training_finished")
     #         log.info(f"Best Model is Saved to {best_model_path}")
-
-    best_model_path = "trained_models/supervised_wictsv/val_acc_0.7352_lr_2e-06_bs_4setup1_dot_product_model_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.pt"
-    config["training_params"]["best_model_path"] = best_model_path
-    test_best_model(config)
