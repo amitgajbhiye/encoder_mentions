@@ -122,7 +122,8 @@ class WiCTSVDataset(Dataset):
         if has_metacharacters(word=search_string):
             raw_search_string = re.escape(search_string)
         else:
-            raw_search_string = r"\b" + search_string + r"\b"
+            # raw_search_string = r"\b" + search_string + r"\b"
+            raw_search_string = search_string
 
         srch_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
 
