@@ -12,7 +12,7 @@
 #SBATCH -p gpu_v100
 #SBATCH --gres=gpu:1
 
-#SBATCH --mem=30G
+#SBATCH --mem=40G
 #SBATCH -t 2-00:00:00
 
 ## SBATCH --exclusive
