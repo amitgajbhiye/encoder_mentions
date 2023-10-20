@@ -668,7 +668,7 @@ def test_best_model(config):
 
         log.info(f"{'#' * 80}")
 
-        log.info(f"test_scores on domain {domain_id}")
+        log.info(f"test_scores on domain {domain_id}, {domain}")
         for key, value in scores.items():
             log.info(f"{key}: {value}")
 
