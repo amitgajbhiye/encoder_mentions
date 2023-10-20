@@ -209,7 +209,6 @@ class BiEncoderConceptProperty(nn.Module):
         bienc_concept_embeddings = bienc_concept_embeddings.cpu().numpy()
 
         pretrained_concept_embeddings = np.empty_like(bienc_concept_embeddings)
-
         for idx, (bienc_con_embed, concept_men_embeds) in enumerate(
             zip(bienc_concept_embeddings, concept_mention_embeddings)
         ):
@@ -265,8 +264,6 @@ class BiEncoderConceptProperty(nn.Module):
             pretrained_concept_embeddings[idx] = avg_k_nearest_mention_embeds
 
         return pretrained_concept_embeddings
-
-    ####################################
 
     def forward(self, ids_dict, pretrained_concept_embeddings=None):
         label = ids_dict.pop("label")
@@ -488,8 +485,8 @@ def train(config, param_dict):
                 ids_dict, pretrained_concept_embeddings=batch_con_mention_embeds
             )
 
-            if isinstance(model, nn.DataParallel):
-                loss = loss.mean()
+            # if isinstance(model, nn.DataParallel):
+            #     loss = loss.mean()
 
             loss.backward()
             optimizer.step()
@@ -512,7 +509,7 @@ def train(config, param_dict):
         train_loss /= step + 1
         log.info(
             "Epoch: %d | train loss: %.4f ",
-            epoch,
+            epoch + 1,
             train_loss,
         )
 
@@ -528,7 +525,7 @@ def train(config, param_dict):
     fold_test_label, fold_test_pred = [], []
 
     model.eval()
-    for step, batch in enumerate(tqdm(test_dataloader, desc="Test Iteration")):
+    for step, batch in enumerate(tqdm(test_dataloader, desc="Testing")):
         print(flush=True)
         print(
             f"batch['concept']: {len(batch['concept'])}, {batch['concept']}",
@@ -539,11 +536,11 @@ def train(config, param_dict):
             flush=True,
         )
 
-        pretrained_con_embeds = np.asarray(
+        pretrained_con_embeds_val = np.asarray(
             [con_all_mention_embeds_dict[con] for con in batch["concept"]]
         )
 
-        print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
+        print(f"pretrained_con_embeds_val.shape: {pretrained_con_embeds_val.shape}")
 
         ids_dict = test_dataset.get_sent_ids(batch)
         ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
@@ -551,7 +548,7 @@ def train(config, param_dict):
 
         with torch.no_grad():
             loss, test_batch_logits, _, _ = model(
-                ids_dict, pretrained_concept_embeddings=pretrained_con_embeds
+                ids_dict, pretrained_concept_embeddings=pretrained_con_embeds_val
             )
 
         test_batch_preds = torch.round(torch.sigmoid(test_batch_logits))
@@ -562,7 +559,7 @@ def train(config, param_dict):
 
         del batch
         del ids_dict
-        del pretrained_con_embeds
+        del pretrained_con_embeds_val
         del loss
         gc.collect()
 
@@ -681,7 +678,7 @@ if __name__ == "__main__":
         log.info(f"Parameter cv_type : {cv_type}")
         log.info(f'num_folds: {config["training_params"]["num_folds"]}')
 
-        k_values = [2, 3, 5, 10, 20, 50]
+        k_values = [2, 3, 5, 10]
         max_epochs = [6, 1, 2, 3, 4, 5]
         for max_epoch in max_epochs:
             for k_value in k_values:
