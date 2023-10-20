@@ -550,7 +550,7 @@ def test_best_model(config):
 
     dataset_params = config["dataset_params"]
     test_file = dataset_params["test_file_path"]
-    test_df = pd.read_csv(test_file, sep="\t")
+    test_df = pd.read_csv(test_file, sep="\t", dtype={"domain": str})
 
     training_params = config["training_params"]
     batch_size = training_params["batch_size"]
