@@ -73,7 +73,7 @@ class WiCTSVDataset(Dataset):
         elif datatype == "test":
             self.test_df = test_df
 
-        self.data_df = pd.read_csv(self.file_path, sep="\t")
+        self.data_df = pd.read_csv(self.file_path, sep="\t")[0:402]
 
         log.info(f"datatype: {datatype}")
         log.info(f"file_path: {self.file_path}")
@@ -208,9 +208,10 @@ class SupervisedWicTsv(nn.Module):
             f"Definition Model is loaded from : {pretrained_definition_model_path}",
             flush=True,
         )
-        # dropout_prop = model_params["dropout_prob"]
-        # self.dropout = nn.Dropout(dropout_prop)
-        # self.classifier = nn.Linear(2 * 1024, 1)
+        dropout_prop = model_params["dropout_prob"]
+
+        self.dropout = nn.Dropout(dropout_prop)
+        self.classifier = nn.Linear(2 * 1024, 1)
 
     def forward(self, context_ids_dict, definition_ids_dict, labels=None):
         mention_embeds = self.men_model(pretrained_con_embeds=None, **context_ids_dict)
@@ -218,22 +219,15 @@ class SupervisedWicTsv(nn.Module):
             pretrained_con_embeds=None, **definition_ids_dict
         )
 
-        # concatenated_embeds = torch.cat((mention_embeds, definition_embeds), dim=1)
+        concatenated_embeds = torch.cat((mention_embeds, definition_embeds), dim=1)
 
         print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
         print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
+        print(f"concatenated_embeds.shape : {concatenated_embeds.shape}", flush=True)
 
-        # print(f"concatenated_embeds.shape : {concatenated_embeds.shape}", flush=True)
-
-        # concatenated_embeds = nn.ReLU()(concatenated_embeds)
-        # concatenated_embeds = self.dropout(concatenated_embeds)
-        # logits = self.classifier(concatenated_embeds)
-
-        logits = (
-            (mention_embeds * definition_embeds)  # Elementwise product
-            .sum(-1)
-            .reshape(mention_embeds.shape[0], 1)
-        )
+        concatenated_embeds = nn.ReLU()(concatenated_embeds)
+        concatenated_embeds = self.dropout(concatenated_embeds)
+        logits = self.classifier(concatenated_embeds)
 
         outputs = (logits,)
 
@@ -313,6 +307,15 @@ def prepare_data_and_models(config):
     log.info(f"total_model_params: {total_model_params}")
     log.info(f"total_trainable_params: {total_trainable_params}")
 
+    # log.info(f"Load Pretrained : {load_pretrained}")
+    # log.info(f"Pretrained Model Path : {pretrained_model_path}")
+    # if load_pretrained:
+    #     log.info(f"load_pretrained is : {load_pretrained}")
+    #     log.info(f"Loading Pretrained Model Weights From : {pretrained_model_path}")
+    #     model.load_state_dict(torch.load(pretrained_model_path))
+
+    #     log.info(f"Loaded Pretrained Model")
+
     if torch.cuda.is_available():
         n_gpu = torch.cuda.device_count()
         if n_gpu > 1:
@@ -377,7 +380,7 @@ def train(config, param_dict):
         log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
         train_loss = 0.0
         model.train()
-        for step, batch in enumerate(tqdm(train_dataloader, desc="Training")):
+        for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
             labels = batch["labels"]
             # print(f"batch_labels: {type(labels), labels}", flush=True)
             context_ids_dict = train_dataset.get_context_ids(batch)
@@ -437,6 +440,9 @@ def train(config, param_dict):
         log.info(f"train_step: {step}")
         train_loss /= step + 1
 
+        del step
+        torch.cuda.empty_cache()
+
         # Validation
 
         log.info(f"Running Validation ...")
@@ -444,7 +450,7 @@ def train(config, param_dict):
         all_labels, all_logits = [], []
 
         model.eval()
-        for step, batch in enumerate(tqdm(val_dataloader, desc="Validation")):
+        for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
             labels = batch["labels"]
             print(f"val_batch_labels: {type(labels), labels}", flush=True)
 
@@ -511,9 +517,7 @@ def train(config, param_dict):
             log.info(f"Current Accuracy: {running_val_accuracy}")
 
         else:
-            model_save_file = os.path.join(
-                save_dir, f"val_acc_{running_val_accuracy}_{model_name}.pt"
-            )
+            model_save_file = os.path.join(save_dir, f"{model_name}.pt")
             log.info(f"Saving Model to: {model_save_file}")
 
             log.info(f"Previous Best Accuracy: {best_val_accuracy}")
@@ -534,8 +538,6 @@ def train(config, param_dict):
             break
 
     del model
-    del step
-    torch.cuda.empty_cache()
     gc.collect()
 
     return model_save_file
@@ -681,28 +683,8 @@ if __name__ == "__main__":
     log.info("The model is run with the following configuration")
     log.info(f"\n {config} \n")
 
-    lrs = [2e-6, 1e-5]
-    batch_sizes = [4, 8]
-
-    # for lr in lrs:
-    #     for batch_size in batch_sizes:
-    #         model_name = f"lr_{lr}_bs_{batch_size}" + str(
-    #             config["training_params"]["model_name"]
-    #         )
-
-    #         config["training_params"]["model_name"] = model_name
-    #         config["training_params"]["lr"] = lr
-    #         config["training_params"]["batch_size"] = batch_size
-
-    #         log.info(f"new_configuration")
-    #         log.info(f"model_name: {model_name}")
-
-    #         param_dict = prepare_data_and_models(config=config)
-    #         best_model_path = train(config=config, param_dict=param_dict)
-
-    #         log.info(f"{'*' * 80}")
-    #         log.info(f"training_finished")
-    #         log.info(f"Best Model is Saved to {best_model_path}")
+    # param_dict = prepare_data_and_models(config=config)
+    # best_model_path = train(config=config, param_dict=param_dict)
 
     best_model_path = "trained_models/supervised_wictsv/val_acc_0.7352_lr_2e-06_bs_4setup1_dot_product_model_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.pt"
     config["training_params"]["best_model_path"] = best_model_path
