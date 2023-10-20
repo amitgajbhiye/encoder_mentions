@@ -183,8 +183,15 @@ class BiEncoderConceptProperty(nn.Module):
 
         concept_embedding, property_embedding, _ = self.con_prop_bienc(**ids_dict)
 
+        # logits = (
+        #     (pretrained_concept_embeddings * property_embedding)
+        #     .sum(-1)
+        #     .reshape(property_embedding.shape[0], 1)
+        # )
+
+        # For the baseline model where we do not update concept embedding
         logits = (
-            (pretrained_concept_embeddings * property_embedding)
+            (concept_embedding * property_embedding)
             .sum(-1)
             .reshape(property_embedding.shape[0], 1)
         )
@@ -315,9 +322,10 @@ def train(config, param_dict):
     model_save_file = os.path.join(save_dir, model_name)
     log.info(f"Fold {fold_num}, model_save_file: {model_save_file}")
 
-    pretrained_con_embeds_path = training_params["pretrained_con_embeds_path"]
-    with open(pretrained_con_embeds_path, "rb") as embed_pkl:
-        pretrained_con_embeds_dict = pickle.load(embed_pkl)
+    # For baseline model we do not need mention embeddings
+    # pretrained_con_embeds_path = training_params["pretrained_con_embeds_path"]
+    # with open(pretrained_con_embeds_path, "rb") as embed_pkl:
+    #     pretrained_con_embeds_dict = pickle.load(embed_pkl)
 
     for epoch in trange(max_epochs, desc="Epoch"):
         log.info("Epoch {:} of {:}".format(epoch, max_epochs))
@@ -334,19 +342,22 @@ def train(config, param_dict):
                 flush=True,
             )
 
-            pretrained_con_embeds = torch.tensor(
-                [pretrained_con_embeds_dict[con] for con in batch["concept"]]
-            ).to(device)
+            # pretrained_con_embeds = torch.tensor(
+            #     [pretrained_con_embeds_dict[con] for con in batch["concept"]]
+            # ).to(device)
 
-            print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
+            # print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
 
             ids_dict = train_dataset.get_sent_ids(batch)
             ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
 
             model.zero_grad()
-            loss, _, _, _ = model(
-                ids_dict, pretrained_concept_embeddings=pretrained_con_embeds
-            )
+            # For baseline model
+            # loss, _, _, _ = model(
+            #     ids_dict, pretrained_concept_embeddings=pretrained_con_embeds
+            # )
+
+            loss, _, _, _ = model(ids_dict, pretrained_concept_embeddings=None)
 
             if isinstance(model, nn.DataParallel):
                 loss = loss.mean()
@@ -399,19 +410,23 @@ def train(config, param_dict):
             flush=True,
         )
 
-        pretrained_con_embeds = torch.tensor(
-            [pretrained_con_embeds_dict[con] for con in batch["concept"]]
-        ).to(device)
+        # pretrained_con_embeds = torch.tensor(
+        #     [pretrained_con_embeds_dict[con] for con in batch["concept"]]
+        # ).to(device)
 
-        print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
+        # print(f"pretrained_con_embeds.shape: {pretrained_con_embeds.shape}")
 
         ids_dict = test_dataset.get_sent_ids(batch)
         ids_dict = {key: value.to(device) for key, value in ids_dict.items()}
         test_batch_label = ids_dict["label"].cpu().numpy().flatten()
 
         with torch.no_grad():
+            # loss, test_batch_logits, _, _ = model(
+            #     ids_dict, pretrained_concept_embeddings=pretrained_con_embeds
+            # )
+
             loss, test_batch_logits, _, _ = model(
-                ids_dict, pretrained_concept_embeddings=pretrained_con_embeds
+                ids_dict, pretrained_concept_embeddings=None
             )
 
         test_batch_preds = torch.round(torch.sigmoid(test_batch_logits))
