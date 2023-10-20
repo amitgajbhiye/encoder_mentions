@@ -76,7 +76,7 @@ class WiCTSVDataset(Dataset):
         # self.data_df = pd.read_csv(self.file_path, sep="\t")
 
         for col in self.data_df.columns:
-            self.data_df[col] = self.data_df[col].str.lower()
+            self.data_df[col] = self.data_df[col].astype(str).str.lower()
 
         log.info(f"datatype: {datatype}")
         # log.info(f"file_path: {self.file_path}")
