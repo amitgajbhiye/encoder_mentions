@@ -375,7 +375,7 @@ def train(config, param_dict):
 
             del batch
             del ids_dict
-            del pretrained_con_embeds
+            # del pretrained_con_embeds
             del loss
             gc.collect()
 
@@ -437,7 +437,7 @@ def train(config, param_dict):
 
         del batch
         del ids_dict
-        del pretrained_con_embeds
+        # del pretrained_con_embeds
         del loss
         gc.collect()
 
