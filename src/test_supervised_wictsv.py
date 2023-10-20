@@ -694,7 +694,8 @@ if __name__ == "__main__":
     log.info("The model is run with the following configuration")
     log.info(f"\n {config} \n")
 
-    best_model_path = "trained_models/supervised_wictsv/val_acc_0.7352_lr_2e-06_bs_4setup1_dot_product_model_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.pt"
+    #  best_model_path = "trained_models/supervised_wictsv/val_acc_0.7352_lr_2e-06_bs_4setup1_dot_product_model_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.pt"
+    best_model_path = "trained_models/supervised_wictsv/val_acc_0.7686_lr_1e-05_bs_4lr_2e-06_bs_8lr_2e-06_bs_4setup1_dot_product_model_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.pt"
     config["training_params"]["best_model_path"] = best_model_path
     test_best_model(config)
 
