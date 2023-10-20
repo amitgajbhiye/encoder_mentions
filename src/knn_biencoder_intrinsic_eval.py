@@ -682,21 +682,17 @@ if __name__ == "__main__":
 
         if config["training_params"]["mention_embeds_averaging_strategy"] == "all":
             model_evaluation_property_cross_validation(config)
-
         elif config["training_params"]["mention_embeds_averaging_strategy"] == "knn":
             k_values = [2, 3, 5, 10]
-            max_epochs = [6, 1, 2, 3, 4, 5]
-            for max_epoch in max_epochs:
-                for k_value in k_values:
-                    log.info(f"{'*' * 80}")
-                    log.info(f"new_grid_search")
-                    log.info(f"max_epoch_{max_epoch}_num_nearest_{k_value}")
+            for k_value in k_values:
+                log.info(f"{'*' * 80}")
+                log.info(f"new_grid_search")
+                log.info(f"num_nearest_{k_value}")
 
-                    config["training_params"]["max_epochs"] = max_epoch
-                    config["training_params"]["num_nearest_neighbours"] = k_value
-                    log.info(f"new_config: {config}")
+                config["training_params"]["num_nearest_neighbours"] = k_value
+                log.info(f"new_config: {config}")
 
-                    model_evaluation_property_cross_validation(config)
+                model_evaluation_property_cross_validation(config)
 
     elif cv_type == "model_evaluation_concept_property_split":
         log.info(f'Parameter do_cv : {config["training_params"].get("do_cv")}')
