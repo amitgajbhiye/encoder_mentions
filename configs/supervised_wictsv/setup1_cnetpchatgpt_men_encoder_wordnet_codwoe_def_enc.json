@@ -19,10 +19,10 @@
     },
     "training_params": {
         "load_pretrained": false,
-        "batch_size": 4,
+        "batch_size": null,
         "lr_schedule":"cosine",
-        "lr": 2e-6,
-        "max_epochs": 100,
+        "lr": null,
+        "max_epochs": 40,
         "warmup_ratio": 0,
         "patience_early_stopping": 10,
         "save_dir": "trained_models/supervised_wictsv",

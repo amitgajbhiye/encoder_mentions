@@ -681,12 +681,28 @@ if __name__ == "__main__":
     log.info("The model is run with the following configuration")
     log.info(f"\n {config} \n")
 
-    param_dict = prepare_data_and_models(config=config)
-    best_model_path = train(config=config, param_dict=param_dict)
+    lrs = [2e-6, 1e-5]
+    batch_sizes = [4, 8]
 
-    log.info(f"{'*' * 80}")
-    log.info(f"Training Finished")
-    log.info(f"Best Model is Saved to {best_model_path}")
+    for lr in lrs:
+        for batch_size in batch_sizes:
+            model_name = f"lr_{lr}_bs_{batch_size}" + str(
+                config["training_params"]["model_name"]
+            )
+
+            config["training_params"]["model_name"] = model_name
+            config["training_params"]["lr"] = lr
+            config["training_params"]["batch_size"] = batch_size
+
+            log.info(f"new_configuration")
+            log.info(f"model_name: {model_name}")
+
+            param_dict = prepare_data_and_models(config=config)
+            best_model_path = train(config=config, param_dict=param_dict)
+
+            log.info(f"{'*' * 80}")
+            log.info(f"training_finished")
+            log.info(f"Best Model is Saved to {best_model_path}")
 
     # config["training_params"]["best_model_path"] = best_model_path
     # test_best_model(config)
