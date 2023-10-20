@@ -19,6 +19,9 @@
 
 conda activate venv
 
-python3 src/supervised_wictsv.py --config configs/supervised_wictsv/setup1_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.json
+# python3 src/supervised_wictsv.py --config configs/supervised_wictsv/setup1_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.json
+
+# FOr desktop
+CUDA_VISIBLE_DEVICES=0 python3 src/supervised_wictsv.py --config configs/supervised_wictsv/setup1_dot_product_model_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc.json
 
 echo 'Job Finished !!!'

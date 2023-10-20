@@ -208,10 +208,9 @@ class SupervisedWicTsv(nn.Module):
             f"Definition Model is loaded from : {pretrained_definition_model_path}",
             flush=True,
         )
-        dropout_prop = model_params["dropout_prob"]
-
-        self.dropout = nn.Dropout(dropout_prop)
-        self.classifier = nn.Linear(2 * 1024, 1)
+        # dropout_prop = model_params["dropout_prob"]
+        # self.dropout = nn.Dropout(dropout_prop)
+        # self.classifier = nn.Linear(2 * 1024, 1)
 
     def forward(self, context_ids_dict, definition_ids_dict, labels=None):
         mention_embeds = self.men_model(pretrained_con_embeds=None, **context_ids_dict)
@@ -219,15 +218,22 @@ class SupervisedWicTsv(nn.Module):
             pretrained_con_embeds=None, **definition_ids_dict
         )
 
-        concatenated_embeds = torch.cat((mention_embeds, definition_embeds), dim=1)
+        # concatenated_embeds = torch.cat((mention_embeds, definition_embeds), dim=1)
 
         print(f"mention_embeds.shape : {mention_embeds.shape}", flush=True)
         print(f"definition_embeds.shape : {definition_embeds.shape}", flush=True)
-        print(f"concatenated_embeds.shape : {concatenated_embeds.shape}", flush=True)
 
-        concatenated_embeds = nn.ReLU()(concatenated_embeds)
-        concatenated_embeds = self.dropout(concatenated_embeds)
-        logits = self.classifier(concatenated_embeds)
+        # print(f"concatenated_embeds.shape : {concatenated_embeds.shape}", flush=True)
+
+        # concatenated_embeds = nn.ReLU()(concatenated_embeds)
+        # concatenated_embeds = self.dropout(concatenated_embeds)
+        # logits = self.classifier(concatenated_embeds)
+
+        logits = (
+            (mention_embeds * definition_embeds)  # Elementwise product
+            .sum(-1)
+            .reshape(mention_embeds.shape[0], 1)
+        )
 
         outputs = (logits,)
 
@@ -371,7 +377,7 @@ def train(config, param_dict):
         log.info("Epoch {:} of {:}".format(epoch + 1, max_epochs))
         train_loss = 0.0
         model.train()
-        for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+        for step, batch in enumerate(tqdm(train_dataloader, desc="Training")):
             labels = batch["labels"]
             # print(f"batch_labels: {type(labels), labels}", flush=True)
             context_ids_dict = train_dataset.get_context_ids(batch)
@@ -438,7 +444,7 @@ def train(config, param_dict):
         all_labels, all_logits = [], []
 
         model.eval()
-        for step, batch in enumerate(tqdm(val_dataloader, desc="val")):
+        for step, batch in enumerate(tqdm(val_dataloader, desc="Validation")):
             labels = batch["labels"]
             print(f"val_batch_labels: {type(labels), labels}", flush=True)
 
