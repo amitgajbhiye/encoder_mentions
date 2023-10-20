@@ -559,9 +559,9 @@ def test_best_model(config):
     test_file = dataset_params["test_file_path"]
     test_df = pd.read_csv(test_file, sep="\t", dtype={"domain": str})
 
-    test_df["word"] = test_df["word"].astype(str).lower()
-    test_df["contexts"] = test_df["contexts"].astype(str).lower()
-    test_df["definitions"] = test_df["definitions"].astype(str).lower()
+    test_df["word"] = test_df["word"].str.lower()
+    test_df["contexts"] = test_df["contexts"].str.lower()
+    test_df["definitions"] = test_df["definitions"].str.lower()
 
     training_params = config["training_params"]
     batch_size = training_params["batch_size"]
