@@ -71,12 +71,12 @@ class WiCTSVDataset(Dataset):
         elif datatype == "valid":
             self.file_path = dataset_params["val_file_path"]
         elif datatype == "test":
-            self.test_df = test_df
+            self.data_df = test_df
 
-        self.data_df = pd.read_csv(self.file_path, sep="\t")
+        # self.data_df = pd.read_csv(self.file_path, sep="\t")
 
         log.info(f"datatype: {datatype}")
-        log.info(f"file_path: {self.file_path}")
+        # log.info(f"file_path: {self.file_path}")
         log.info(f"dataframe_columns: {self.data_df.columns}")
         log.info(f"loaded_dataframe: {self.data_df}")
 
@@ -580,7 +580,7 @@ def test_best_model(config):
             log.info(f"*** Testing on All Domains ***")
             domain_data_df = test_df
 
-        log.info(f"num_test_instance : {len(domain_data_df)}")
+        log.info(f"domain_data_df_num_test_instance : {len(domain_data_df)}")
 
         test_dataset = WiCTSVDataset(
             datatype="test", test_df=domain_data_df, dataset_params=dataset_params
@@ -596,8 +596,8 @@ def test_best_model(config):
             drop_last=False,
         )
 
-        log.info(f"test_dataset.test_df: {len(test_dataset.test_df)}")
-        log.info(f"test_dataset.test_df: {test_dataset.test_df.shape}")
+        log.info(f"test_dataset.test_df: {len(test_dataset.data_df)}")
+        log.info(f"test_dataset.test_df: {test_dataset.data_df.shape}")
 
         all_logits, all_labels = [], []
 
