@@ -1,0 +1,35 @@
+{
+    "experiment_name": "2testset_setup1_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc",
+    "log_dirctory": "supervised_wictsv",
+    "dataset_params": {
+        "dataset_name": "supervised_wictsv",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 130,
+        "train_file_path": "data/supervised_wictsv/train.tsv",
+        "val_file_path": "data/supervised_wictsv/dev.tsv",
+        "test_file_path": "data/supervised_wictsv/test_with_domain.tsv"
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
+        "pretrained_mention_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
+        "pretrained_definition_model_path": "trained_models/definition_encoder/bert_large_wordnet_codwoe.pt",
+        "dropout_prob": 0.2
+    },
+    "training_params": {
+        "load_pretrained": false,
+        "batch_size": 8,
+        "lr_schedule":"cosine",
+        "lr": 2e-6,
+        "max_epochs": 40,
+        "warmup_ratio": 0,
+        "patience_early_stopping": 10,
+        "save_dir": "trained_models/supervised_wictsv",
+        "model_name": "2testset_setup1_cnetpchatgpt_men_encoder_wordnet_codwoe_def_enc",
+        "weight_decay": 0.01
+    }
+
+    
+
+}

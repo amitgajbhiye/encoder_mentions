@@ -1,0 +1,22 @@
+{
+    "experiment_name": "get_definition_embeds",
+    "log_dirctory": "",
+    "dataset_params": {
+        "dataset_name": "definition_embeds",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": null,
+        "max_len": 120,
+        "word_sent_file": "data/clean_taxonomy_evaluation_sentences/sentences_science_ev.taxo.tsv"
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": null
+    },
+    "inference_params": {
+        "load_pretrained": true,
+        "pretrained_model_path": "trained_models/bert_large_definition_encoder_wordnet_codwoe.pt",
+        "batch_size": 128,
+        "save_dir": "trained_models"
+    }
+    
+}

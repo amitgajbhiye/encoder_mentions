@@ -1,0 +1,27 @@
+{
+    "experiment_name": "test_cross_entropy_multitask_580k_bert_large",
+    "log_dirctory": "wictsv_evaluation",
+    "dataset_params": {
+        "dataset_name": "wictsv_testset",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/home/amit/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 120
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/home/amit/hf_pretrained_models/bert_large_mlm/model",
+        "run_mode": "inference",
+        "loss_type": "cross_entropy"
+    },
+    "inference_params": {
+        "model_type": "multitask",
+        "pretrained_mention_model_path": null,
+        "pretrained_definition_model_path": null,
+        "pretrained_multitask_model_path": "trained_models/multitask_encoder_pretrain/cross_entropy_bert_large_multitask_580kdata_pretrain.pt",
+        "wictsv_test_file": "data/wictsv/processed_wictsv_testset.tsv",
+        "label_file": "data/wictsv/_test_labels.txt",
+        "save_dir": "trained_models/wictsv_preds",
+        "classification_thresh": 0.42147,
+        "batch_size": 16
+    }
+}

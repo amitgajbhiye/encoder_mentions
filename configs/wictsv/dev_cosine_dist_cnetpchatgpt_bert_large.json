@@ -1,0 +1,24 @@
+{
+    "experiment_name": "dev_cosine_dist_cnetpchatgpt_bert_large_entropy",
+    "log_dirctory": "wictsv_evaluation",
+    "dataset_params": {
+        "dataset_name": "wictsv_devset",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 120
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model"
+    },
+    "inference_params": {
+        "pretrained_mention_model_path": "trained_models/mention_enc/bert_large_cnetpchatgpt_5k_cons.pt",
+        "pretrained_definition_model_path": "trained_models/definition_encoder/bert_large_wordnet_codwoe.pt",
+        "wictsv_test_file": "data/wictsv/processed_wictsv_developmentset.tsv",
+        "label_file": "data/wictsv/dev_labels.txt",
+        "save_dir": "trained_models/wictsv_preds",
+        "classification_thresh": null,
+        "batch_size": 16,
+        "test_domain": null
+    }
+}

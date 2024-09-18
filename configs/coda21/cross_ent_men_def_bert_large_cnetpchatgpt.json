@@ -1,0 +1,26 @@
+{
+    "experiment_name": "cross_ent_men_def_bert_large_cnetpchatgpt",
+    "log_dirctory": "coda21_evaluation",
+    "dataset_params": {
+        "dataset_name": "coda21",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 120
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model",
+        "run_mode": "inference",
+        "loss_type": "cross_entropy"
+    },
+    "inference_params": {
+        "model_type": null,
+    	"data_folder": "data/coda21",
+    	"sentence_model": "cross_ent_men_def_bert_large_cnetpchatgpt",
+    	"save_dir": "output",
+        "pretrained_mention_model_path": "trained_models/mention_enc/cross_entropy_bert_large_cnetpchatgpt_5k_cons.pt",
+        "pretrained_definition_model_path": "trained_models/definition_encoder/cross_entropy_bert_large_wordnet_codwoe_definition_encoder.pt",
+        "pretrained_multitask_model_path": null
+
+    }
+}

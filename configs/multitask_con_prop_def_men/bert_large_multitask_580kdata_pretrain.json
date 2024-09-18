@@ -1,0 +1,34 @@
+{
+    "experiment_name": "bert_large_multitask_580kdata_pretrain",
+    "log_dirctory": "multitask_encoder_pretrain",
+    "dataset_params": {
+        "dataset_name": "con_sent",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/home/amit/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 65,
+        "train_file_path": "data/multitask_con_prop_def_men/580k/multitask_580k_train.tsv",
+        "val_file_path": "data/multitask_con_prop_def_men/580k/multitask_580k_val.tsv",
+        "test_file_path": null
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/home/amit/hf_pretrained_models/bert_large_mlm/model",
+        "tau": 0.05,
+        "use_hard_pair": false,
+        "run_mode": "train"
+    },
+    "training_params": {
+        "load_pretrained": false,
+        "pretrained_model_path": null,
+        "batch_size": 8,
+        "lr": 2e-6,
+        "lr_schedule":"cosine",
+        "max_epochs": 100,
+        "warmup_ratio": 0,
+        "patience_early_stopping": 3,
+        "save_dir": "trained_models/multitask_encoder_pretrain",
+        "model_name": "bert_large_multitask_580kdata_pretrain.pt",
+        "weight_decay": 0.02
+    }
+    
+}

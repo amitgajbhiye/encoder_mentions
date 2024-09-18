@@ -1,0 +1,33 @@
+{
+    "experiment_name": "baseline_mcrae_setup1_bert_large_bienc_intrinsic_eval",
+    "log_dirctory": "bienc_intrinsic_eval",
+    "dataset_params": {
+        "dataset_name": "mcrae_property_split",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_uncased/tokenizer",
+        "max_len": 20
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_uncased/model",
+        "vector_strategy":"mask_token"
+    },
+    "training_params": {
+        "do_cv": true,
+        "cv_type": "model_evaluation_property_split",
+        "load_pretrained": true,
+        "freeze_concept_encoder": true,
+        "pretrained_bienc_model_path": "/scratch/c.scmag3/property_augmentation/trained_models/cnetp_chatgpt_pretrain/bienc_bert_large_cnetp_chatgpt100k_pretrain_new_data.pt",
+        "pretrained_con_embeds_path": null,
+        "train_test_data_dir": "data/mcrae/mcrae_prop_split_train_test_files",
+        "batch_size": 32,
+        "lr_schedule":"linear",
+        "lr": 2e-6,
+        "max_epochs": 6,
+        "warmup_ratio": 0,
+        "patience_early_stopping": 10,
+        "save_dir": "trained_models/bienc_intrinsic_eval",
+        "model_name": "baseline_mcrae_setup1_bert_large_bienc_intrinsic_eval.pt",
+        "weight_decay": 0.1
+    }   
+}

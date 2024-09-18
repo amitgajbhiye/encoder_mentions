@@ -1,0 +1,21 @@
+{
+    "experiment_name": "dex_mention_embeds_mcrae_concepts_with_mentions",
+    "log_dirctory": "get_mention_embeddings",
+    "dataset_params": {
+        "dataset_name": "dex_mention_embeds_mcrae_concepts",
+        "hf_tokenizer_name": "bert-large-uncased",
+        "hf_tokenizer_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/tokenizer",
+        "max_len": 120,
+        "word_sent_file": "data/mcrae/mcrae_concept_with_mention_sentences.tsv"
+    },
+    "model_params": {
+        "hf_checkpoint_name": "bert-large-uncased",
+        "hf_model_path": "/scratch/c.scmag3/hf_pretrained_models/bert_large_mlm/model"
+    },
+    "inference_params": {
+        "load_pretrained": true,
+        "pretrained_model_path": "trained_models/mention_enc/contrastive_bert_large_dex_mentions_pretrained_mention_encoder.pt",
+        "batch_size": 128,
+        "save_dir": "trained_models/mention_embeddings"
+    }
+}
